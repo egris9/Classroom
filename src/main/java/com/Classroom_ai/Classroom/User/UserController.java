@@ -17,7 +17,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://localhost:5175")
 public class UserController {
 
     private final UserService userService;
@@ -43,7 +43,11 @@ public class UserController {
     public ResponseEntity<?> loginUser(@RequestParam String email, @RequestParam String password) {
         User user = userService.authenticateUser(email, password);
         if (user != null) {
-            return ResponseEntity.ok(user); // Success
+            // Générer le token JWT
+            String token = JwtTokenUtil.generateToken(user);
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);  // Envoyer le token JWT au frontend
+            return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.status(401).body("Invalid credentials!"); // Failure
         }
