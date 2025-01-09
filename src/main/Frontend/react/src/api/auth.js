@@ -18,17 +18,44 @@ export const signUp = async (formData) => {
 export const signInn = async (email, password) => {
     try {
         const response = await axios.post(`${API_URL}/signing`, null, {
-            params: { email, password } // Pass email and password as URL parameters
-
+            params: { email, password }, // Pass email and password as URL parameters
         });
 
-        console.log("Login successful", response.data);
-        return response.data; // Return only the data for simpler consumption
+        console.log("Sign in successful", response.data);
+
+        // Si la connexion réussit, stocker le token JWT dans localStorage
+        const token = response.data.token; // Assurez-vous que votre backend renvoie un champ 'token'
+        localStorage.setItem('jwt_token', token); // Stocker dans localStorage
+
+        return response.data; // Retourner les données de l'utilisateur et le token
     } catch (error) {
         console.error(
-            "Login failed",
+            "Sign in failed",
             error.response?.data?.message || error.message || "An unknown error occurred."
         );
-        throw error; // Throw error for the calling function to handle
+        throw error; // Lancer l'erreur pour la gestion dans la fonction appelante
     }
+};
+
+// Exemple d'une fonction API qui utilise le token JWT dans l'en-tête
+export const getUserData = async () => {
+    try {
+        const token = localStorage.getItem('jwt_token'); // Récupérer le token depuis localStorage
+
+        const response = await axios.get(`${API_URL}/user-data`, {
+            headers: {
+                Authorization: `Bearer ${token}`, // Ajouter le token dans l'en-tête Authorization
+            }
+        });
+
+        return response.data; // Retourner les données utilisateur
+    } catch (error) {
+        console.error("Error fetching user data", error);
+        throw error;
+    }
+};
+
+// Déconnexion : supprimer le token du localStorage
+export const signOut = () => {
+    localStorage.removeItem('jwt_token'); // Supprimer le token JWT du localStorage
 };

@@ -7,9 +7,18 @@ import java.util.Optional;
 @Service
 
 public class CourseService {
-    private CourseRepository courseRepository;
+    private final CourseRepository courseRepository;
+
+    @Autowired
+    public CourseService(CourseRepository courseRepository) {
+        this.courseRepository = courseRepository;
+    }
 
     public Course createCourse(Course course) {
+        // Vérifier si le cours existe déjà
+        if (courseRepository.findByCourseName(course.getCourseName()).isPresent()) {
+            throw new IllegalArgumentException("Un cours avec ce nom existe déjà.");
+        }
         return courseRepository.save(course);
     }
 

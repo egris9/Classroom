@@ -18,22 +18,23 @@ export function Form({ signIn }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Basic validation
+        // Validation de base
         if (!email || !password) {
             setError("Please fill out all fields.");
             return;
         }
 
         try {
-            const response = await signInn(email, password); // API call
+            const response = await signInn(email, password); // Appel API pour se connecter
             console.log("Sign In Successful:", response);
-            navigate("/"); // Redirect to home page
+
+            // Redirection après une connexion réussie
+            navigate("/"); // Rediriger vers la page d'accueil ou une page protégée
         } catch (err) {
             console.error("Sign In Error:", err);
             setError(err.response?.data?.message || "Sign In Failed. Please check your credentials.");
         }
     };
-
 
     return (
         <form onSubmit={handleSubmit} className="text-left w-full max-w-md">

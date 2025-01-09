@@ -1,6 +1,8 @@
 import { Button, Input, Typography } from "@material-tailwind/react";
-import { useState } from "react";
+import { useState , useCallback  } from "react";
 import { NavBar } from "./components/navbar.jsx";
+import { createCourse } from "../api/courses.js";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 export function Creation() {
     // State for form inputs
@@ -9,37 +11,57 @@ export function Creation() {
     const [subject, setSubject] = useState("");
     const [room, setRoom] = useState("");
     const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+    const navigate = useNavigate(); // Initialize useNavigate
 
-        // Basic validation
-        if (!courseName || !section || !subject || !room) {
-            setError("All fields are required.");
-            return;
-        }
-
-        // Handle course creation logic here
-        console.log({
-            courseName,
-            section,
-            subject,
-            room,
-        });
-
-        // Reset the form
+    const resetForm = () => {
         setCourseName("");
         setSection("");
         setSubject("");
         setRoom("");
-        setError(null);
     };
+
+    const handleSubmit = useCallback(
+        async (event) => {
+            event.preventDefault();
+            setError(null);
+            setSuccessMessage("");
+            setIsSubmitting(true);
+
+            if (!courseName.trim() || !section.trim() || !subject.trim() || !room.trim()) {
+                setError("Tous les champs sont requis.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            try {
+                const courseData = { courseName, section, subject, room: parseInt(room, 10) }; // Conversion room en entier
+                const response = await createCourse(courseData);
+                if (response) {
+                    setSuccessMessage("Le cours a été créé avec succès !");
+                    resetForm()
+                    // Redirection vers "/"
+                    setTimeout(() => {
+                        navigate("/"); // Redirige après un délai (optionnel)
+                    }, 1000); // Délai de 1 seconde pour afficher le message
+                }
+            } catch (error) {
+                setError(error.message);
+            } finally {
+                setIsSubmitting(false);
+            }
+        },
+        [courseName, section, subject, room]
+    );
 
     return (
         <section className="min-h-screen bg-purple-50">
-            <NavBar/> {/* Added NavBar component */}
+            <NavBar/>
             <div className="flex items-center justify-center mt-48 px-4">
-                <div className="flex flex-col md:flex-row w-full gap-6 mx-auto max-w-6xl justify-between bg-gray-50 p-6 md:p-10 rounded-2xl">
+                <div
+                    className="flex flex-col md:flex-row w-full gap-6 mx-auto max-w-6xl justify-between bg-gray-50 p-6 md:p-10 rounded-2xl">
                     <div
                         className="flex flex-col gap-3 flex-1 items-center md:items-start text-center md:text-left mt-20">
                         <Typography variant="h2" color="blue-gray" className=" ml-24">
@@ -60,7 +82,7 @@ export function Creation() {
                                 variant="outlined"
                                 color="gray"
                                 placeholder="Enter course name"
-                                className="w-full"
+                                required
                             />
                         </div>
                         <div>
@@ -73,7 +95,7 @@ export function Creation() {
                                 variant="outlined"
                                 color="gray"
                                 placeholder="Enter section"
-                                className="w-full"
+                                required
                             />
                         </div>
                         <div>
@@ -86,7 +108,7 @@ export function Creation() {
                                 variant="outlined"
                                 color="gray"
                                 placeholder="Enter subject"
-                                className="w-full"
+                                required
                             />
                         </div>
                         <div>
@@ -99,13 +121,23 @@ export function Creation() {
                                 variant="outlined"
                                 color="gray"
                                 placeholder="Enter room"
-                                className="w-full"
+                                type="number"
+                                min="1"
+                                required
                             />
                         </div>
-                        <Button color="purple" size="lg" className="mt-6" fullWidth type="submit">
-                            Create Course
+                        <Button
+                            color="purple"
+                            size="lg"
+                            className="mt-6"
+                            fullWidth
+                            type="submit"
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? "Creating..." : "Create Course"}
                         </Button>
                         {error && <div className="text-red-500 mt-4 text-center">{error}</div>}
+                        {successMessage && <div className="text-green-500 mt-4 text-center">{successMessage}</div>}
                     </form>
                 </div>
             </div>
