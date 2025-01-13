@@ -11,8 +11,10 @@ export function Creation() {
     const [subject, setSubject] = useState("");
     const [room, setRoom] = useState("");
     const [error, setError] = useState(null);
+    const [accessCode, setAccessCode] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showRedirectButton, setShowRedirectButton] = useState(false);
 
     const navigate = useNavigate(); // Initialize useNavigate
 
@@ -28,10 +30,11 @@ export function Creation() {
             event.preventDefault();
             setError(null);
             setSuccessMessage("");
+            setAccessCode(""); // Réinitialise le code d'accès
             setIsSubmitting(true);
 
             if (!courseName.trim() || !section.trim() || !subject.trim() || !room.trim()) {
-                setError("Tous les champs sont requis.");
+                setError("All fields are required");
                 setIsSubmitting(false);
                 return;
             }
@@ -39,13 +42,16 @@ export function Creation() {
             try {
                 const courseData = { courseName, section, subject, room: parseInt(room, 10) }; // Conversion room en entier
                 const response = await createCourse(courseData);
+
                 if (response) {
-                    setSuccessMessage("Le cours a été créé avec succès !");
+                    // Ajoutez un log pour inspecter la réponse de l'API
+                    console.log("Réponse API:", response);
+                    setAccessCode(response.accessCode); // Mettre à jour accessCode avec la réponse de l'API
+                    setSuccessMessage("The course has been successfully created !");
                     resetForm()
                     // Redirection vers "/"
-                    setTimeout(() => {
-                        navigate("/"); // Redirige après un délai (optionnel)
-                    }, 1000); // Délai de 1 seconde pour afficher le message
+                    // Afficher le bouton de redirection immédiatement après la création du cours
+                    setShowRedirectButton(true);
                 }
             } catch (error) {
                 setError(error.message);
@@ -137,7 +143,28 @@ export function Creation() {
                             {isSubmitting ? "Creating..." : "Create Course"}
                         </Button>
                         {error && <div className="text-red-500 mt-4 text-center">{error}</div>}
-                        {successMessage && <div className="text-green-500 mt-4 text-center">{successMessage}</div>}
+                        {successMessage && (
+                            <div className="text-green-500 mt-4 text-center">
+                                {successMessage}
+                                {accessCode && (
+                                    <div>
+                                        <p className="text-red-900 mt-2">Remember your Code "{accessCode}"</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {/* Bouton de redirection affiché immédiatement après la création du cours */}
+                        {showRedirectButton && (
+                            <div className="mt-2 text-center">
+                                <Button
+                                    color="purple"
+                                    size="lg"
+                                    onClick={() => navigate("/courses")}
+                                >
+                                    Go to Courses
+                                </Button>
+                            </div>
+                        )}
                     </form>
                 </div>
             </div>

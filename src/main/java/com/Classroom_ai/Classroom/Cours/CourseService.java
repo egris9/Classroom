@@ -17,12 +17,13 @@ public class CourseService {
     public Course createCourse(Course course) {
         // Vérifier si le cours existe déjà
         if (courseRepository.findByCourseName(course.getCourseName()).isPresent()) {
-            throw new IllegalArgumentException("Un cours avec ce nom existe déjà.");
+            throw new CourseAlreadyExistsException("A course with this name already exists");
         }
         return courseRepository.save(course);
     }
 
-    public Optional<Course> joinCourse(Long id) {
-        return courseRepository.findById(id);
+    public Optional<Course> joinCourseByAccessCode(String accessCode) {
+        System.out.println("Requête avec accessCode: " + accessCode); // Log de l'accessCode
+        return courseRepository.findByAccessCode(accessCode);
     }
 }
