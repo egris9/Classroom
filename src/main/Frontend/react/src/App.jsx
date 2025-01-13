@@ -4,6 +4,8 @@ import SignUp from "./Templates/sign_up.jsx";
 import Home from "./Templates/home.jsx";
 import Creation from "./Templates/creation.jsx";
 import JoinPage from "./Templates/join.jsx";
+import Courses from "./Templates/courses.jsx";
+
 
 
 
@@ -15,6 +17,7 @@ const App = () => {
         <Home />
         <Creation />
         <JoinPage />
+        <Courses />
 
     </>
   )
