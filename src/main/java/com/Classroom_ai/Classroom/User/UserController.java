@@ -47,36 +47,11 @@ public class UserController {
             String token = JwtTokenUtil.generateToken(user);
             Map<String, String> response = new HashMap<>();
             response.put("token", token);  // Envoyer le token JWT au frontend
+            response.put("firstname", user.getFirstName().toUpperCase());  // Utiliser getFirstName()
             return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.status(401).body("Invalid credentials!"); // Failure
         }
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<?> logoutUser(HttpServletRequest request, HttpServletResponse response) {
-        try {
-            // Invalidate the session
-            request.getSession().invalidate();
-            // Clear the authentication
-            SecurityContextHolder.clearContext();
-            // You can also add custom logic to respond after logout
-            return ResponseEntity.ok("Logout successful");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error during logout");
-        }
-    }
-
-    @GetMapping("/user")
-    public Map<String, String> getUserInfo(Authentication authentication) {
-        Map<String, String> userInfo = new HashMap<>();
-        if (authentication != null && authentication.isAuthenticated()) {
-            User user = (User) authentication.getPrincipal(); // Get the authenticated user
-            userInfo.put("firstName", user.getFirstName());
-            userInfo.put("lastName", user.getLastName());
-            userInfo.put("email", user.getEmail());
-        }
-        return userInfo;
     }
 
 }

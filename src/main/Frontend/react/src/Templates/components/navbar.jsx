@@ -1,4 +1,3 @@
-import { MdAccountCircle, MdOutlineExpandMore } from "react-icons/md";
 import { useState, useEffect } from "react";
 import React from "react";
 import {
@@ -10,61 +9,39 @@ import {
 } from "@material-tailwind/react";
 import {Link} from "react-router-dom";
 
+
 export function NavBar() {
     const [openNav, setOpenNav] = useState(false);
-    const [dropdownOpen, setDropdownOpen] = useState(false); // State for controlling dropdown visibility
-    const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login state
-    const [user, setUser] = useState(null); // Store user details
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [user, setUser] = useState(null); // Stocke les informations utilisateur
 
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 960) setOpenNav(false);
         };
 
+        // Vérifier si l'utilisateur est connecté au chargement
+        const token = localStorage.getItem("jwt_token");
+        const userFirstName = localStorage.getItem("user_firstname");
+        // Vérifier si le prénom est bien récupéré depuis localStorage
+        console.log("Prénom récupéré depuis localStorage:", userFirstName);
+
+        if (token && userFirstName) {
+            setUser({ firstname: userFirstName });
+        }
+
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Simulate fetching user details after login
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                if (isLoggedIn) {
-                    const response = await fetch("/api/auth/user");
-                    if (!response.ok) {
-                        console.error(`HTTP error! Status: ${response.status}`);
-                        return;
-                    }
-                    const userData = await response.json();
-                    setUser(userData);
-                }
-            } catch (error) {
-                console.error("Error fetching user details:", error.message);
-            }
-        };
-
-        fetchUser().catch((error) => {
-            console.error("Unhandled error in fetchUser:", error);
-        });
-    }, [isLoggedIn]);
-
-    const handleSignOut = async () => {
-        try {
-            const response = await fetch("/api/auth/logout", {
-                method: "POST",
-                credentials: "include",
-            });
-
-            if (response.ok) {
-                setIsLoggedIn(false);
-                setUser(null);
-            } else {
-                console.error("Error during logout:", response.status);
-            }
-        } catch (error) {
-            console.error("Error during logout:", error);
-        }
+    const handleSignOut = () => {
+        // Déconnexion : Supprimer le jeton et réinitialiser l'état
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('user_firstname');
+        setUser(null);
     };
+
+
 
     const navList = (
         <ul className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-6">
@@ -111,11 +88,11 @@ export function NavBar() {
                 <div className="hidden lg:flex lg:items-center lg:gap-6">
                     {navList}
                     <div className="flex items-center gap-2">
-                        {!isLoggedIn ? (
+                        {!user ? (
                             <>
                                 <Link to="/signup">
                                     <Button variant="text" size="sm" className="rounded-full">
-                                        Log In
+                                        Sign Up
                                     </Button>
                                 </Link>
                                 <Link to="/signing">
@@ -126,9 +103,9 @@ export function NavBar() {
                             </>
                         ) : (
                             <>
-                                <Button variant="text" size="sm" className="rounded-full">
-                                    {user?.firstName || "User"}
-                                </Button>
+                                <Typography as="span" variant="small" color="blue-gray" className="p-1 font-medium mr-4">
+                                    {user.firstname}
+                                </Typography>
                                 <Button
                                     size="sm"
                                     className="rounded-full bg-purple-500 hover:bg-purple-600"
@@ -173,29 +150,24 @@ export function NavBar() {
             <MobileNav open={openNav} className="rounded-lg">
                 {navList}
                 <div className="mt-4 flex flex-col items-center gap-2">
-                    {!isLoggedIn ? (
+                    {!user ? (
                         <>
                             <Button fullWidth variant="text" size="sm" className="rounded-full">
-                                Log In
+                                Sign Up
                             </Button>
                             <Button fullWidth size="sm" className="rounded-full bg-purple-500 hover:bg-purple-600">
                                 Sign In
                             </Button>
                         </>
                     ) : (
-                        <>
-                            <Button fullWidth variant="text" size="sm" className="rounded-full">
-                                {user?.firstName || "User"}
-                            </Button>
-                            <Button
-                                fullWidth
-                                size="sm"
-                                className="rounded-full bg-purple-500 hover:bg-purple-600"
-                                onClick={handleSignOut}
-                            >
-                                Sign Out
-                            </Button>
-                        </>
+                        <Button
+                            fullWidth
+                            size="sm"
+                            className="rounded-full bg-purple-500 hover:bg-purple-600"
+                            onClick={handleSignOut}
+                        >
+                            Sign Out
+                        </Button>
                     )}
                 </div>
             </MobileNav>

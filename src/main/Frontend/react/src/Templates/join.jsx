@@ -1,31 +1,36 @@
 import React, { useState } from 'react';
 import { Button, Input,Typography } from '@material-tailwind/react'; // Assuming you're using Material Tailwind for Typography
 import { NavBar } from "./components/navbar.jsx";
+import { joinCourseByCode } from "../api/courses.js";
 
 export function JoinPage() {
-    // State for the input field (code)
-    const [joinCode, setJoinCode] = useState("");
-    const [error, setError] = useState(null);
+    const [joinCode, setJoinCode] = useState(""); // Code d'accès saisi
+    const [error, setError] = useState(null); // Pour afficher les erreurs
+    const [course, setCourse] = useState(null); // Pour afficher le cours si trouvé
 
 
-    const handleJoinSubmit = (e) => {
+    const handleJoinSubmit = async (e) => {
         e.preventDefault();
 
-        // Basic validation
         if (!joinCode) {
-            setError("All fields are required.");
+            setError("Le code d'accès est requis.");
             return;
         }
 
-        // Handle course creation logic here
-        console.log({
-            joinCode
-        });
+        console.log("Code d'accès soumis : ", joinCode); // Ajout de log
 
-        // Reset the form
+        setError(null);
+
+        const result = await joinCourseByCode(joinCode);
+
+        if (result.success) {
+            setCourse(result.course);
+        } else {
+            setError(result.error);
+        }
+
         setJoinCode("");
     };
-
 
 
     return (
@@ -64,6 +69,18 @@ export function JoinPage() {
                     </form>
                 </div>
             </div>
+            {/* Afficher le cours si trouvé */}
+            {course && (
+                <div className="mt-10 text-center bg-white p-6 rounded-lg shadow-md">
+                    <Typography variant="h5" color="green" className="mb-2">
+                        Course Found!
+                    </Typography>
+                    <p><strong>Course Name:</strong> {course.courseName}</p>
+                    <p><strong>Section:</strong> {course.section}</p>
+                    <p><strong>Subject:</strong> {course.subject}</p>
+                    <p><strong>Room:</strong> {course.room}</p>
+                </div>
+            )}
         </section>
     );
 }
