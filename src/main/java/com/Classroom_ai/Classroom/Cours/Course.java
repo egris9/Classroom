@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.NotBlank;
 
+import java.util.UUID;
+
 @Setter
 @Getter
 @Entity
@@ -33,5 +35,17 @@ public class Course {
     @Column(nullable = false)
     @Min(value = 1, message = "Room must be greater than 0")
     private Integer room;
+
+    private String accessCode; // Code d'accès
+
+    public Course() {
+        this.accessCode = generateAccessCode(); // Générer le code lors de la création
+    }
+
+    // Génération d'un code alphanumérique unique
+    private String generateAccessCode() {
+        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
 
 }
