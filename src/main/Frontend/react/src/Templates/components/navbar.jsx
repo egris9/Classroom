@@ -104,7 +104,7 @@ export function NavBar() {
                         ) : (
                             <>
                                 <Typography as="span" variant="small" color="blue-gray" className="p-1 font-medium mr-4">
-                                    {user.firstname}
+                                    Hello {user.firstname} !
                                 </Typography>
                                 <Button
                                     size="sm"

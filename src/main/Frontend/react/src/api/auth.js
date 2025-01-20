@@ -6,8 +6,8 @@ const API_URL = "http://localhost:8080/api/auth";
 // Sign Up Function
 export const signUp = async (formData) => {
     try {
-        const response = await axios.post(`${API_URL}/signup`, formData);
-        return response.data; // Return user data
+        const response = await axios.post(`${API_URL}/signup`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+        return response.data;
     } catch (error) {
         console.error("Sign Up Error:", error.response?.data || error.message);
         throw error.response?.data || error.message; // Return error for component handling
