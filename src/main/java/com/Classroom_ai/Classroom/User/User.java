@@ -27,4 +27,19 @@ public class User {
 
     @NotBlank(message = "Password is required")
     private String password;
+
+    private String profilePicturePath;  // New field to store the profile picture path
+
+    // Add a constructor with all parameters
+    public User(String firstName, String lastName, String email, String password, String profilePicturePath) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.password = password;
+        this.profilePicturePath = profilePicturePath;
+    }
+
+    public User() {
+
+    }
 }
