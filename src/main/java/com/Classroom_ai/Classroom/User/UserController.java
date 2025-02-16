@@ -1,27 +1,18 @@
 package com.Classroom_ai.Classroom.User;
-
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-
-import java.io.File;
-import java.io.IOException;
+import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.UUID;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.multipart.MultipartFile;
-
-
-import java.util.Optional;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,12 +20,17 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
+
 
     // Constructor injection
-    public UserController(UserService userService) {
+    public UserController(UserService userService,UserRepository userRepository) {
         this.userService = userService;
+        this.userRepository = userRepository;
     }
 
+    @Value("${upload.dir}")
+    private String uploadDir;
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@RequestParam String firstName,
@@ -43,23 +39,78 @@ public class UserController {
                                           @RequestParam String password,
                                           @RequestParam(required = false) MultipartFile profilePicture) {
         try {
-            // Logic to handle profile picture
-            String profilePicturePath = "default-profile.png"; // Default image if none provided
-            if (profilePicture  != null && !profilePicture.isEmpty()) {
-                profilePicturePath  = saveProfilePicture(profilePicture);
+            if (userService.isEmailTaken(email)) {
+                return ResponseEntity.status(400).body("Email is already taken.");
             }
 
-            // Create and save the user
+            String profilePicturePath = "default-profile.png";
+            if (profilePicture != null && !profilePicture.isEmpty()) {
+                profilePicturePath = saveProfilePicture(profilePicture);
+            }
+
             User user = new User(firstName, lastName, email, password, profilePicturePath);
             User savedUser = userService.registerUser(user);
 
             return ResponseEntity.ok(savedUser);
+
+        } catch (IOException e) {
+            return ResponseEntity.status(500)
+                    .body("Error occurred while saving profile picture.");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Email already exists or error occurred!");
+            return ResponseEntity.badRequest()
+                    .body("Error occurred during registration.");
+        }
+
+
+
+    }
+
+    @GetMapping("/profile-picture/{fileName}")
+    public ResponseEntity<byte[]> getProfilePicture(@PathVariable String fileName) {
+        try {
+            Path filePath = Paths.get(uploadDir).resolve(fileName);
+            // Check if file exists and is readable
+            if (!Files.exists(filePath)) {
+                // If file not found, try to serve default image
+                filePath = Paths.get(uploadDir).resolve("default-profile.png");
+                if (!Files.exists(filePath)) {
+                    return ResponseEntity.notFound().build();
+                }
+            }
+            byte[] imageBytes = Files.readAllBytes(filePath);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .body(imageBytes);
+
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 
     private String saveProfilePicture(MultipartFile file) throws IOException {
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null) {
+            originalFilename = "unknown-file";
+        }
+
+        // Generate unique filename
+        String fileName = UUID.randomUUID().toString() + "-" +
+                StringUtils.cleanPath(originalFilename);
+
+        // Save file
+        Path targetLocation = Paths.get(uploadDir).resolve(fileName);
+        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+        return fileName;
+    }
+
+
+
+
+
+
+    /*private String saveProfilePicture(MultipartFile file) throws IOException {
         // Générer un nom de fichier unique pour éviter les collisions
         String fileName = UUID.randomUUID().toString() + "-" + file.getOriginalFilename();
 
@@ -80,22 +131,21 @@ public class UserController {
 
         // Retourner le nom du fichier (ou son chemin relatif)
         return "/uploads/" + fileName;  // Retourner le chemin relatif pour l'URL
-    }
+    }*/
 
     // Sign-In Endpoint
-    @PostMapping("/signing")
+    @PostMapping("/signin")
     public ResponseEntity<?> loginUser(@RequestParam String email, @RequestParam String password) {
         User user = userService.authenticateUser(email, password);
         if (user != null) {
-            // Générer le token JWT
+            // Generate JWT token
             String token = JwtTokenUtil.generateToken(user);
             Map<String, String> response = new HashMap<>();
-            response.put("token", token);  // Envoyer le token JWT au frontend
-            response.put("firstname", user.getFirstName().toUpperCase());  // Utiliser getFirstName()
+            response.put("token", token);
+            response.put("firstName", user.getFirstName());  // Return first name as part of the response
             return ResponseEntity.ok(response);
         } else {
-            return ResponseEntity.status(401).body("Invalid credentials!"); // Failure
+            return ResponseEntity.status(401).body("Invalid credentials!");
         }
     }
-
 }

@@ -17,7 +17,7 @@ export const signUp = async (formData) => {
 // Sign In Function
 export const signInn = async (email, password) => {
     try {
-        const response = await axios.post(`${API_URL}/signing`, null, {
+        const response = await axios.post(`${API_URL}/signin`, null, {
             params: { email, password }, // Pass email and password as URL parameters
         });
 
@@ -25,9 +25,10 @@ export const signInn = async (email, password) => {
 
         // Si la connexion réussit, stocker le token JWT dans localStorage
         const token = response.data.token; // Assurez-vous que votre backend renvoie un champ 'token'
-        const firstname = response.data.firstname; // Assurez-vous que votre backend renvoie un champ 'firstname'
+        const firstname = response.data.firstName; // Assurez-vous que votre backend renvoie un champ 'firstname'
         localStorage.setItem('jwt_token', token); // Stocker dans localStorage
         localStorage.setItem("user_firstname", firstname); // Stocker le prénom
+
 
         console.log("Received data during sign in:", response.data);
 

@@ -50,3 +50,39 @@ export const joinCourseByCode = async (joinCode) => {
         }
     }
 };
+
+
+
+
+export const getCourses = async (type = "user") => {
+    const token = localStorage.getItem("jwt_token");
+
+
+    if (!token) {
+        throw new Error("Utilisateur non authentifié");
+    }
+
+    try {
+        // Add `type` as a query parameter
+        const response = await axios.get(`${API_URL}/courses`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            params: { type }, // Pass the type ('user' or 'all') dynamically
+        });
+
+        return response.data;
+    } catch (error) {
+        if (error.response?.status === 401) {
+            localStorage.removeItem("jwt_token");
+            window.location.href = "/login"; // Redirect to login page
+        }
+
+        const errorMessage =
+            error.response?.data?.message || "Erreur interne du serveur.";
+        throw new Error(errorMessage);
+    }
+};
+
+
+
