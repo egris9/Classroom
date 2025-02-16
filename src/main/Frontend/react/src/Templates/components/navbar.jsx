@@ -51,8 +51,8 @@ export function NavBar() {
                 </a>
             </Typography>
             <Typography as="li" variant="small" color="blue-gray" className="p-1 font-medium">
-                <a href="#" className="flex items-center">
-                    Course
+                <a href="/courses" className="flex items-center">
+                    Courses
                 </a>
             </Typography>
             {/* Creationcours Link with Dropdown */}
