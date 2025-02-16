@@ -20,13 +20,13 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
-    private final UserRepository userRepository;
+
 
 
     // Constructor injection
     public UserController(UserService userService,UserRepository userRepository) {
         this.userService = userService;
-        this.userRepository = userRepository;
+
     }
 
     @Value("${upload.dir}")
