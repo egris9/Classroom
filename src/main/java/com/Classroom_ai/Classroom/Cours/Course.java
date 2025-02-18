@@ -1,5 +1,6 @@
 package com.Classroom_ai.Classroom.Cours;
 
+import com.Classroom_ai.Classroom.CourseFile.CourseFile;
 import com.Classroom_ai.Classroom.User.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -11,6 +12,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,9 +24,6 @@ public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-
-
 
     @NotBlank(message = "Course Name is required")
     @Column(nullable = false)
@@ -44,8 +43,8 @@ public class Course {
     private Integer room;
 
     private String accessCode;
-
-
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CourseFile> files = new ArrayList<>();
 
 
     @Setter

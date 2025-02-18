@@ -1,4 +1,6 @@
 package com.Classroom_ai.Classroom.Cours;
+import com.Classroom_ai.Classroom.CourseFile.CourseFile;
+import com.Classroom_ai.Classroom.CourseFile.CourseFileRepository;
 import com.Classroom_ai.Classroom.User.UserService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,11 +12,13 @@ import com.Classroom_ai.Classroom.User.UserRepository;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.web.multipart.MultipartFile;
 
 
 @Service
@@ -23,12 +27,14 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository; // Make sure this is declared
     private final UserService userService;
+    private final CourseFileRepository courseFileRepository;
 
     @Autowired
-    public CourseService(CourseRepository courseRepository, UserRepository userRepository,UserService userService) {
+    public CourseService(CourseRepository courseRepository, UserRepository userRepository,UserService userService, CourseFileRepository courseFileRepository) {
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;  // Ensure the UserRepository is injected here
         this.userService = userService;
+        this.courseFileRepository = courseFileRepository;
 
     }
 
@@ -43,8 +49,6 @@ public class CourseService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur interne du serveur.");
         }
     }
-
-
 
     public Course createCourse(Course course) {
         // Check for duplicate course name
@@ -62,8 +66,6 @@ public class CourseService {
         // Save the course
         return courseRepository.save(course);
     }
-
-
 
     public Course joinCourseByAccessCode(String accessCode) {
         Course course = courseRepository.findByAccessCode(accessCode)
@@ -85,21 +87,6 @@ public class CourseService {
 
         return course;
     }
-
-
-
-
-   /* public Optional<Course> joinCourseByAccessCode(String accessCode) {
-        System.out.println("Requête avec accessCode: " + accessCode); // Log de l'accessCode
-        return courseRepository.findByAccessCode(accessCode);
-    }*/
-
-
-
-
-
-
-
     public List<Course> getCoursesCreatedByUser(Long userId) {
         return courseRepository.findByTeacherId(userId);
     }
@@ -108,9 +95,6 @@ public class CourseService {
     public List<Course> getCoursesJoinedByUser(Long userId) {
         return courseRepository.findByStudentsContaining(userService.getAuthenticatedUser());
     }
-
-
-
 
 }
 

@@ -8,6 +8,8 @@ import SignUp from "./Templates/sign_up.jsx";
 import Home from "./Templates/home.jsx";
 import JoinPage from "./Templates/join.jsx";
 import Courses from "./Templates/courses.jsx";
+import PDFUpload from "./Templates/PDFUpload.jsx"
+import CoursePDFs from "./Templates/CoursePDFs.jsx"
 
 import { ThemeProvider } from "@material-tailwind/react";
 import Creation from "./Templates/creation.jsx";
@@ -25,6 +27,8 @@ ReactDOM.createRoot(root).render(
                         <Route path="/creation" element={<Creation />} />
                         <Route path="/join" element={<JoinPage />} />
                         <Route path="/courses" element={<Courses />} />
+                        <Route path="/pdfupload" element={<PDFUpload />} />
+                        <Route path="/coursepdfs" element={<CoursePDFs />} />
 
                 </Routes>
             </ThemeProvider>

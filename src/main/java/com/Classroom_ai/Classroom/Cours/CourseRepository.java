@@ -12,10 +12,7 @@ import java.util.Optional;
 public interface CourseRepository extends JpaRepository<Course, Long> {
     Optional<Course> findByCourseName(String courseName);
     Optional<Course> findByAccessCode(String accessCode);
-
-
     List<Course> findByTeacherId(Long teacherId);
-
     List<Course> findByStudentsContaining(User student);
 }
 

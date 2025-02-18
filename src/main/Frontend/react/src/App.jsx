@@ -5,6 +5,8 @@ import Home from "./Templates/home.jsx";
 import Creation from "./Templates/creation.jsx";
 import JoinPage from "./Templates/join.jsx";
 import Courses from "./Templates/courses.jsx";
+import PDFUpload from "./Templates/PDFUpload.jsx"
+import CoursePDFs from "./Templates/CoursePDFs.jsx"
 
 
 
@@ -18,6 +20,8 @@ const App = () => {
         <Creation />
         <JoinPage />
         <Courses />
+        <PDFUpload />
+        <CoursePDFs />
 
     </>
   )
