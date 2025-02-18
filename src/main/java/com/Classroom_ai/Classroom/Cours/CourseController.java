@@ -1,4 +1,5 @@
 package com.Classroom_ai.Classroom.Cours;
+import com.Classroom_ai.Classroom.CourseFile.CourseFile;
 import com.Classroom_ai.Classroom.User.User;
 
 import com.Classroom_ai.Classroom.User.UserService;
@@ -9,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,8 +26,6 @@ import java.util.stream.Stream;
 public class CourseController {
     private final CourseService courseService;
     private final UserService userService;
-
-
 
     public CourseController(CourseService courseService,UserService userService) {
 
@@ -64,10 +64,6 @@ public class CourseController {
         }
     }
 
-
-
-
-
     @GetMapping("/courses")
     public ResponseEntity<?> getCourses(@RequestParam String type) {
         try {
@@ -91,9 +87,6 @@ public class CourseController {
             return new ResponseEntity<>("Error fetching courses: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
-
-
     private List<Map<String, Object>> mapCoursesToResponse(List<Course> courses, String type) {
         return courses.stream().map(course -> {
             Map<String, Object> courseData = new HashMap<>();
@@ -112,18 +105,4 @@ public class CourseController {
             return courseData;
         }).collect(Collectors.toList());
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
