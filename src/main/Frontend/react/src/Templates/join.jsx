@@ -3,10 +3,11 @@ import { Button, Input,Typography } from '@material-tailwind/react'; // Assuming
 import { NavBar } from "./components/navbar.jsx";
 import { joinCourseByCode } from "../api/courses.js";
 
+
 export function JoinPage() {
     const [joinCode, setJoinCode] = useState(""); // Code d'accès saisi
     const [error, setError] = useState(null); // Pour afficher les erreurs
-    const [course, setCourse] = useState(null); // Pour afficher le cours si trouvé
+    const [setCourse] = useState(null); // Pour afficher le cours si trouvé
 
 
     const handleJoinSubmit = async (e) => {
@@ -62,25 +63,20 @@ export function JoinPage() {
                                 className="w-full"
                             />
                         </div>
-                        <Button color="purple" size="lg"  fullWidth type="submit">
+                        <Button color="purple" size="lg" fullWidth type="submit">
                             Join Course
                         </Button>
                         {error && <div className="text-red-500 text-center">{error}</div>}
+
+                        <Typography variant="h5" color="green" className="mb-2 text-center">
+                            Course joined
+                        </Typography>
+
                     </form>
+
                 </div>
             </div>
-            {/* Afficher le cours si trouvé */}
-            {course && (
-                <div className="mt-10 text-center bg-white p-6 rounded-lg shadow-md">
-                    <Typography variant="h5" color="green" className="mb-2">
-                        Course Found!
-                    </Typography>
-                    <p><strong>Course Name:</strong> {course.courseName}</p>
-                    <p><strong>Section:</strong> {course.section}</p>
-                    <p><strong>Subject:</strong> {course.subject}</p>
-                    <p><strong>Room:</strong> {course.room}</p>
-                </div>
-            )}
+
         </section>
     );
 }

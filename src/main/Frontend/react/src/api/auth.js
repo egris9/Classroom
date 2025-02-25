@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Base URL for your backend
-const API_URL = "http://localhost:8080/api/auth";
+export const API_URL = "http://localhost:8080/api/auth";
 
 // Sign Up Function
 export const signUp = async (formData) => {

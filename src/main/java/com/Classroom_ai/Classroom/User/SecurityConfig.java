@@ -31,6 +31,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("Templates/components/courses/course_card/**").permitAll()
+                        .requestMatchers("/api/course-files/**").permitAll()
                         .requestMatchers("/api/courses/**").authenticated() // Protéger l'endpoint de création de cours
                         .anyRequest().authenticated()); // Assurez-vous que d'autres routes nécessitent une authentification
         return http.build();

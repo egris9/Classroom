@@ -1,6 +1,7 @@
 package com.Classroom_ai.Classroom.CourseFile;
 
 import com.Classroom_ai.Classroom.Cours.Course;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,5 +23,6 @@ public class CourseFile {
 
     @ManyToOne
     @JoinColumn(name = "course_id", nullable = false)
+    @JsonIgnore
     private Course course;
 }

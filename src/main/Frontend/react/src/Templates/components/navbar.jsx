@@ -51,6 +51,11 @@ export function NavBar() {
                 </a>
             </Typography>
             <Typography as="li" variant="small" color="blue-gray" className="p-1 font-medium">
+                <a href="/tools" className="flex items-center">
+                    Tools
+                </a>
+            </Typography>
+            <Typography as="li" variant="small" color="blue-gray" className="p-1 font-medium">
                 <a href="/courses" className="flex items-center">
                     Courses
                 </a>

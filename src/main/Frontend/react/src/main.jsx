@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
-import App from "./app";
 import "./main.css"
 import SignIn from "./Templates/sign_in.jsx";
 import SignUp from "./Templates/sign_up.jsx";
@@ -9,8 +8,8 @@ import Home from "./Templates/home.jsx";
 import JoinPage from "./Templates/join.jsx";
 import Courses from "./Templates/courses.jsx";
 import PDFUpload from "./Templates/PDFUpload.jsx"
-import CoursePDFs from "./Templates/CoursePDFs.jsx"
-
+import PDFDisplay from "./Templates/PDFDisplay.jsx"
+import Tools1 from "./Templates/tools.jsx"
 import { ThemeProvider } from "@material-tailwind/react";
 import Creation from "./Templates/creation.jsx";
 
@@ -27,8 +26,9 @@ ReactDOM.createRoot(root).render(
                         <Route path="/creation" element={<Creation />} />
                         <Route path="/join" element={<JoinPage />} />
                         <Route path="/courses" element={<Courses />} />
-                        <Route path="/pdfupload" element={<PDFUpload />} />
-                        <Route path="/coursepdfs" element={<CoursePDFs />} />
+                        <Route path="/pdfupload/:courseid" element={<PDFUpload />} />
+                        <Route path="/coursepdfs/:courseid" element={<PDFDisplay />} />
+                        <Route path="/tools" element={<Tools1 />} />
 
                 </Routes>
             </ThemeProvider>

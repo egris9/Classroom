@@ -1,8 +1,8 @@
 import { Button, Typography, Input } from "@material-tailwind/react";
-import { useState, useCallback } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { useState } from "react";
+import {  pdfjs } from "react-pdf";
 import { NavBar } from "./components/navbar.jsx";
-import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -12,17 +12,16 @@ export function PDFUpload() {
     const [pdfFile, setPdfFile] = useState(null);
     const [courseName, setCourseName] = useState("");
     const [courseCode, setCourseCode] = useState("");
-    const [pdfList, setPdfList] = useState([]);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const navigate = useNavigate();
 
     const handleFileChange = (event) => {
         setPdfFile(event.target.files[0]);
     };
 
-    const handleSubmit = useCallback(
+
+    const handleSubmit =
         async (event) => {
             event.preventDefault();
             setError(null);
@@ -36,10 +35,11 @@ export function PDFUpload() {
             }
 
             try {
-                // Simuler un envoi du fichier et du nom via une API
-                // Remplace cette partie par la logique d'upload réelle
-                const newPdf = { courseName, courseCode, name: pdfName, file: pdfFile.name };
-                setPdfList([...pdfList, newPdf]);
+                const formData = new FormData();
+                formData.append('file', pdfFile);
+                const response = await axios.post(`http://localhost:8080/api/course-files/upload/${courseCode}`, formData);
+                console.log(response.data)
+
                 setSuccessMessage("PDF successfully uploaded!");
                 setCourseName(""); // Reset course name input
                 setCourseCode(""); // Reset course code input
@@ -50,9 +50,8 @@ export function PDFUpload() {
             } finally {
                 setIsSubmitting(false);
             }
-        },
-        [pdfName, pdfFile, courseName, courseCode, pdfList]
-    );
+        }
+
 
     return (
         <section className="min-h-screen bg-purple-50">
