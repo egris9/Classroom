@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { API_URL } from "../../../api/client.js";
 
 const CourseCard = ({ course }) => {
-    const {  name, teacher } = course;
+    const { courseName: name, teacher } = course;
 
     // Add your base URL here. This might be different based on your deployment environment.
     const BASE_URL = `${API_URL}/api/auth/profile-picture/`;

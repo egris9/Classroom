@@ -1,7 +1,5 @@
-package com.Classroom_ai.Classroom.CourseFile;
+package com.Classroom_ai.Classroom.course;
 
-import com.Classroom_ai.Classroom.Cours.Course;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,13 +14,12 @@ public class CourseFile {
     private Long id;
 
     @Column(nullable = false)
-    private String fileName;  // Nom du fichier PDF
+    private String fileName;
 
     @Column(nullable = false)
-    private String filePath;  // Emplacement du fichier PDF
+    private String filePath;
 
     @ManyToOne
     @JoinColumn(name = "course_id", nullable = false)
-    @JsonIgnore
     private Course course;
 }

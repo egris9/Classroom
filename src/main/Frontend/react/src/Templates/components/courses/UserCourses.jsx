@@ -11,11 +11,11 @@ const UserCourses = () => {
         const fetchCourses = async () => {
             try {
 
-                const coursesData = await getCourses("user");
+                const coursesData = await getCourses();
 
                 if (Array.isArray(coursesData)) {
-                    const created = coursesData.filter(course => course.type === "created");
-                    const joined = coursesData.filter(course => course.type === "joined");
+                    const created = coursesData.filter(course => course.role === "TEACHER");
+                    const joined = coursesData.filter(course => course.role === "STUDENT");
 
                     setCreatedCourses(created);
                     setJoinedCourses(joined);

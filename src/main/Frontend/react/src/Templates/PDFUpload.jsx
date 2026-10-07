@@ -1,16 +1,15 @@
 import { Button, Typography, Input } from "@material-tailwind/react";
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import {  pdfjs } from "react-pdf";
-import client from "../api/client.js";
+import { uploadFile } from "../api/courses.js";
 
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export function PDFUpload() {
-    const [pdfName, setPdfName] = useState("");
+    const { courseid } = useParams();
     const [pdfFile, setPdfFile] = useState(null);
-    const [courseName, setCourseName] = useState("");
-    const [courseCode, setCourseCode] = useState("");
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,24 +26,19 @@ export function PDFUpload() {
             setSuccessMessage("");
             setIsSubmitting(true);
 
-            if (!pdfName.trim() || !pdfFile || !courseName.trim() || !courseCode.trim()) {
-                setError("All fields (course name, course code, PDF name, and file) are required");
+            if (!pdfFile) {
+                setError("Choose a PDF file to upload");
                 setIsSubmitting(false);
                 return;
             }
 
             try {
-                const formData = new FormData();
-                formData.append('file', pdfFile);
-                await client.post(`/api/course-files/upload/${courseCode}`, formData);
+                await uploadFile(courseid, pdfFile);
 
                 setSuccessMessage("PDF successfully uploaded!");
-                setCourseName(""); // Reset course name input
-                setCourseCode(""); // Reset course code input
-                setPdfName(""); // Reset pdf name input
                 setPdfFile(null); // Reset file input
             } catch (error) {
-                setError("An error occurred during the upload");
+                setError(error.message);
             } finally {
                 setIsSubmitting(false);
             }
@@ -60,49 +54,10 @@ export function PDFUpload() {
                             Upload PDF for Course
                         </Typography>
                         <Typography className="mb-8 md:mb-10 text-gray-600 font-normal text-xl ml-20">
-                            Upload PDF files with course details
+                            Add a PDF to this course
                         </Typography>
                     </div>
                     <form onSubmit={handleSubmit} className="space-y-8 w-full max-w-md">
-                        <div>
-                            <Input
-                                value={courseName}
-                                onChange={(e) => setCourseName(e.target.value)}
-                                id="courseName"
-                                label="Course Name"
-                                size="lg"
-                                variant="outlined"
-                                color="gray"
-                                placeholder="Enter course name"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <Input
-                                value={courseCode}
-                                onChange={(e) => setCourseCode(e.target.value)}
-                                id="courseCode"
-                                label="Course Code"
-                                size="lg"
-                                variant="outlined"
-                                color="gray"
-                                placeholder="Enter course code"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <Input
-                                value={pdfName}
-                                onChange={(e) => setPdfName(e.target.value)}
-                                id="pdfName"
-                                label="PDF Name"
-                                size="lg"
-                                variant="outlined"
-                                color="gray"
-                                placeholder="Enter PDF name"
-                                required
-                            />
-                        </div>
                         <div>
                             <Input
                                 type="file"

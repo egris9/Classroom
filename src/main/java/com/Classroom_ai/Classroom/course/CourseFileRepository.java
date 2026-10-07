@@ -1,4 +1,4 @@
-package com.Classroom_ai.Classroom.CourseFile;
+package com.Classroom_ai.Classroom.course;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

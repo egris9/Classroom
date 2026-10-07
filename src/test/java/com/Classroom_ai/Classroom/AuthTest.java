@@ -82,14 +82,14 @@ class AuthTest {
 
     @Test
     void protectedRoute_withoutToken_returns401() throws Exception {
-        mvc.perform(get("/api/courses/courses").param("type", "any"))
+        mvc.perform(get("/api/courses"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test
     void protectedRoute_withGarbageToken_returns401() throws Exception {
-        mvc.perform(get("/api/courses/courses").param("type", "any")
+        mvc.perform(get("/api/courses")
                         .header("Authorization", "Bearer not.a.jwt"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
@@ -98,7 +98,7 @@ class AuthTest {
     @Test
     void protectedRoute_withExpiredToken_returns401() throws Exception {
         String token = tokenSignedWith(jwtSecret, new Date(System.currentTimeMillis() - 1000));
-        mvc.perform(get("/api/courses/courses").param("type", "any")
+        mvc.perform(get("/api/courses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
@@ -111,7 +111,7 @@ class AuthTest {
         String token = Jwts.builder().setSubject(user.getEmail())
                 .setExpiration(new Date(System.currentTimeMillis() + 60_000))
                 .signWith(Keys.hmacShaKeyFor(otherSecret.getBytes()), SignatureAlgorithm.HS256).compact();
-        mvc.perform(get("/api/courses/courses").param("type", "any")
+        mvc.perform(get("/api/courses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
     }
@@ -120,7 +120,7 @@ class AuthTest {
     void protectedRoute_withValidToken_isAllowed() throws Exception {
         User user = newUser();
         String token = tokenSignedWith(jwtSecret, new Date(System.currentTimeMillis() + 60_000), user.getEmail());
-        mvc.perform(get("/api/courses/courses").param("type", "any")
+        mvc.perform(get("/api/courses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }

@@ -9,7 +9,7 @@ const Allcourses = () => {
     useEffect(() => {
         const fetchCourses = async () => {
             try {
-                const data = await getCourses("all");
+                const data = await getCourses();
                 setCourses(data);
             } catch (err) {
                 setError(err.message);
