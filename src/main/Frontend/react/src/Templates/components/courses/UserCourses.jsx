@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getCourses } from '../../../api/courses';
-import CourseCard from './Course_card';
+import CourseCard from './course_card';
 
 const UserCourses = () => {
     const [createdCourses, setCreatedCourses] = useState([]);
