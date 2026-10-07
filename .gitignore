@@ -5,6 +5,8 @@ target/
 ### Local agent files ###
 /claude.md
 /docs/IMPLEMENTATION_PLAN.md
+/docs/PROBLEMS_AND_CONTEXT.md
+/CONTEXT.md
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
