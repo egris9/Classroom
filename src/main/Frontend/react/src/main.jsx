@@ -16,6 +16,7 @@ import { ThemeProvider } from "next-themes";
 import Creation from "./Templates/creation.jsx";
 import RequireAuth from "./RequireAuth.jsx";
 import AppShell from "./components/AppShell.jsx";
+import LegacyPage from "./components/LegacyPage.jsx";
 
 const root = document.getElementById("root");
 
@@ -26,17 +27,19 @@ ReactDOM.createRoot(root).render(
                 <MaterialThemeProvider>
                     <Routes>
                         <Route element={<AppShell />}>
-                            <Route path="/signing" element={<SignIn />} />
-                            <Route path="/signup" element={<SignUp />} />
-                            <Route path="/" element={<Home />} />
                             <Route path="/styleguide" element={<Styleguide />} />
-                            <Route element={<RequireAuth />}>
-                                <Route path="/creation" element={<Creation />} />
-                                <Route path="/join" element={<JoinPage />} />
-                                <Route path="/courses" element={<Courses />} />
-                                <Route path="/pdfupload/:courseid" element={<PDFUpload />} />
-                                <Route path="/coursepdfs/:courseid" element={<PDFDisplay />} />
-                                <Route path="/tools" element={<Tools1 />} />
+                            <Route element={<LegacyPage />}>
+                                <Route path="/signing" element={<SignIn />} />
+                                <Route path="/signup" element={<SignUp />} />
+                                <Route path="/" element={<Home />} />
+                                <Route element={<RequireAuth />}>
+                                    <Route path="/creation" element={<Creation />} />
+                                    <Route path="/join" element={<JoinPage />} />
+                                    <Route path="/courses" element={<Courses />} />
+                                    <Route path="/pdfupload/:courseid" element={<PDFUpload />} />
+                                    <Route path="/coursepdfs/:courseid" element={<PDFDisplay />} />
+                                    <Route path="/tools" element={<Tools1 />} />
+                                </Route>
                             </Route>
                         </Route>
                     </Routes>
