@@ -6,6 +6,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class UserService {
 
@@ -32,6 +34,10 @@ public class UserService {
         // Fetch the user by ID
         return userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + userEmail));
+    }
+
+    public Optional<User> find(Long id) {
+        return userRepository.findById(id);
     }
 
     // Check if email is already taken

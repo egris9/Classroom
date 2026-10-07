@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -76,7 +77,7 @@ class AuthTest {
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.firstName").value("Ada"))
                 .andExpect(jsonPath("$.lastName").value("Lovelace"))
-                .andExpect(jsonPath("$.picture").value("default-profile.png"))
+                .andExpect(jsonPath("$.picture").value(nullValue()))
                 .andExpect(jsonPath("$.password").doesNotExist());
     }
 
@@ -135,7 +136,7 @@ class AuthTest {
     }
 
     private User newUser() {
-        return users.save(new User("Grace", "Hopper", uniqueEmail(), encoder.encode(PASSWORD), "default-profile.png"));
+        return users.save(new User("Grace", "Hopper", uniqueEmail(), encoder.encode(PASSWORD), null));
     }
 
     private static String uniqueEmail() {

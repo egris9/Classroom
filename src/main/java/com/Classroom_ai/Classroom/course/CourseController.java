@@ -5,6 +5,7 @@ import com.Classroom_ai.Classroom.api.CourseRequest;
 import com.Classroom_ai.Classroom.api.CourseResponse;
 import com.Classroom_ai.Classroom.api.FileResponse;
 import com.Classroom_ai.Classroom.api.JoinRequest;
+import com.Classroom_ai.Classroom.api.UserResponse;
 import com.Classroom_ai.Classroom.auth.UserService;
 import com.Classroom_ai.Classroom.membership.Role;
 import jakarta.validation.Valid;
@@ -85,7 +86,7 @@ public class CourseController {
         Course course = access.course();
         User teacher = course.getTeacher();
         return new CourseResponse(course.getId(), course.getCourseName(), course.getSection(), course.getSubject(),
-                course.getRoom(), new CourseResponse.TeacherResponse(teacher.getFirstName(), teacher.getProfilePicturePath()),
+                course.getRoom(), new CourseResponse.TeacherResponse(teacher.getId(), teacher.getFirstName(), UserResponse.pictureUrl(teacher)),
                 access.role(), access.role() == Role.TEACHER ? course.getAccessCode() : null);
     }
 

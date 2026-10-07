@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,7 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * These tests describe what the code does today, including its flaws
  * (see docs/PROBLEMS_AND_CONTEXT.md), so they pass as written.
  * The course and file endpoints that used to be pinned here were replaced in S2:
- * see {@link MembershipTest}.
+ * see {@link MembershipTest}. The profile picture route moved to {@code GET /api/users/{id}/picture} in S3:
+ * see {@link PictureTest}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -62,7 +64,7 @@ class EndpointBaselineTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.firstName").value("Ada"))
-                .andExpect(jsonPath("$.picture").value("default-profile.png"));
+                .andExpect(jsonPath("$.picture").value(nullValue()));
     }
 
     @Test
@@ -75,22 +77,10 @@ class EndpointBaselineTest {
                 .andExpect(jsonPath("$.user.firstName").value("Grace"));
     }
 
-    @Test
-    void profilePicture_servesFileFromUploadDir() throws Exception {
-        String name = UUID.randomUUID() + "-me.jpg";
-        Files.write(Path.of(uploadDir).resolve(name), new byte[]{1, 2, 3, 4});
-
-        MvcResult result = mvc.perform(get("/api/auth/profile-picture/" + name))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.IMAGE_JPEG))
-                .andReturn();
-        assertEquals(4, result.getResponse().getContentAsByteArray().length);
-    }
-
     // --- helpers ---
 
     private User newUser(String firstName) {
-        return users.save(new User(firstName, "Test", uniqueEmail(), encoder.encode(PASSWORD), "default-profile.png"));
+        return users.save(new User(firstName, "Test", uniqueEmail(), encoder.encode(PASSWORD), null));
     }
 
     private static String uniqueEmail() {

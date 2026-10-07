@@ -13,6 +13,7 @@ public record CourseResponse(
         Role role,
         String accessCode) {
 
-    public record TeacherResponse(String name, String profilePicture) {
+    /** {@code picture} is the path to fetch the Teacher's picture from, or null when there is none. */
+    public record TeacherResponse(Long id, String name, String picture) {
     }
 }

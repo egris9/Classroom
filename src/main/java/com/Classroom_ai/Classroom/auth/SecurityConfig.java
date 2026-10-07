@@ -2,6 +2,7 @@ package com.Classroom_ai.Classroom.auth;
 
 import com.Classroom_ai.Classroom.api.ErrorBody;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -37,6 +38,7 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(unauthorizedEntryPoint(mapper)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/picture").permitAll()
                         .requestMatchers("Templates/components/courses/course_card/**").permitAll()
                         .anyRequest().authenticated()); // Assurez-vous que d'autres routes nécessitent une authentification
         return http.build();
