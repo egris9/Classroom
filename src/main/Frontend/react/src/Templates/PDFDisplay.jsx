@@ -1,35 +1,48 @@
 import { Typography } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import client, { API_URL } from '../api/client.js';
+import { fetchFileContent, getCourse, listFiles } from "../api/courses.js";
 
 export function PDFDisplay() {
     const { courseid } = useParams();
     const [pdfList, setPdfList] = useState([]);
+    const [role, setRole] = useState(null);
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Function to fetch PDF files
-    const fetchPDFs = async () => {
-        try {
-            const response = await client.get(
-                `/api/course-files/course/${courseid}`
-            );
-            setPdfList(response.data);
-        } catch (error) {
-            setError(error.response?.data?.message || "An error occurred while fetching PDFs.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-
-
     useEffect(() => {
+        const load = async () => {
+            try {
+                const [course, files] = await Promise.all([getCourse(courseid), listFiles(courseid)]);
+                setRole(course.role);
+                setPdfList(files);
+            } catch (error) {
+                setError(error.message);
+            } finally {
+                setIsLoading(false);
+            }
+        };
         if (courseid) {
-            fetchPDFs();
+            load();
         }
     }, [courseid]);
+
+    // The window opens before the request so the browser does not block it as a popup.
+    const openPdf = async (pdf) => {
+        const viewer = window.open("", "_blank");
+        if (!viewer) {
+            setError("Your browser blocked the PDF window. Allow popups for this site and try again.");
+            return;
+        }
+        try {
+            const blob = await fetchFileContent(pdf.id);
+            const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+            viewer.location = url;
+        } catch (error) {
+            viewer.close();
+            setError(error.message);
+        }
+    };
 
     return (
         <section className="min-h-screen bg-purple-50">
@@ -64,8 +77,7 @@ export function PDFDisplay() {
                                                 <span className="text-gray-800">{pdf.fileName}</span>
                                                 <div className="flex gap-3">
                                                     <button
-                                                        onClick={() => window.open(`${API_URL}/api/course-files/view/${pdf.id}`, '_blank')
-                                                        }
+                                                        onClick={() => openPdf(pdf)}
                                                         className="text-blue-500 hover:underline"
                                                     >
                                                         view PDF
@@ -82,15 +94,17 @@ export function PDFDisplay() {
                             </>
                         )}
 
-                        {/* Button to add new PDF */}
-                        <div className="mt-8 flex justify-center">
-                            <Link
-                                to={`/pdfupload/${courseid}`}
-                                className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
-                            >
-                                Add a New PDF
-                            </Link>
-                        </div>
+                        {/* Button to add new PDF: Teacher only */}
+                        {role === "TEACHER" && (
+                            <div className="mt-8 flex justify-center">
+                                <Link
+                                    to={`/pdfupload/${courseid}`}
+                                    className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
+                                >
+                                    Add a New PDF
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
