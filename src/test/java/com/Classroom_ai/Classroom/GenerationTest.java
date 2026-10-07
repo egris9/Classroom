@@ -3,7 +3,11 @@ package com.Classroom_ai.Classroom;
 import com.Classroom_ai.Classroom.User.User;
 import com.Classroom_ai.Classroom.User.UserRepository;
 import com.Classroom_ai.Classroom.auth.JwtTokenUtil;
+import com.Classroom_ai.Classroom.course.CourseFileRepository;
 import com.Classroom_ai.Classroom.generation.Exercise;
+import com.Classroom_ai.Classroom.generation.GenerationService;
+import com.Classroom_ai.Classroom.generation.Summary;
+import com.Classroom_ai.Classroom.generation.SummaryRepository;
 import com.Classroom_ai.Classroom.generation.TextGeneration;
 import com.jayway.jsonpath.JsonPath;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -55,6 +59,9 @@ class GenerationTest {
     @Autowired BCryptPasswordEncoder encoder;
     @Autowired JwtTokenUtil jwt;
     @Autowired TextGeneration textGeneration;
+    @Autowired GenerationService generation;
+    @Autowired SummaryRepository summaries;
+    @Autowired CourseFileRepository files;
 
     // --- the fake adapter ---
 
@@ -233,6 +240,24 @@ class GenerationTest {
 
         String list = awaitStatus("summaries", file, c.teacher, "FAILED");
         assertEquals("PDF_UNREADABLE", JsonPath.read(list, "$[0].failureCode"));
+    }
+
+    @Test
+    void requestLeftPendingByARestart_isFailedAsInterrupted() throws Exception {
+        Course c = course();
+        String file = c.uploadText(LESSON);
+        Summary stuck = new Summary();
+        stuck.setFile(files.findById(Long.valueOf(file)).orElseThrow());
+        stuck.setAuthor(users.findAll().stream().findFirst().orElseThrow());
+        stuck.setPublished(true);
+        summaries.save(stuck);
+
+        generation.failInterrupted();
+
+        String list = mvc.perform(get("/api/files/" + file + "/summaries").header("Authorization", c.teacher))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals("FAILED", JsonPath.read(list, "$[0].status"));
+        assertEquals("INTERRUPTED", JsonPath.read(list, "$[0].failureCode"));
     }
 
     // --- helpers ---

@@ -6,7 +6,6 @@ import JoinPage from "./Templates/join.jsx";
 import Courses from "./Templates/courses.jsx";
 import PDFUpload from "./Templates/PDFUpload.jsx"
 import PDFDisplay from "./Templates/PDFDisplay.jsx"
-import Tools1 from "./Templates/tools.jsx"
 
 
 
@@ -20,7 +19,6 @@ const App = () => {
         <Creation />
         <JoinPage />
         <Courses />
-        <Tools1 />
         <PDFUpload />
         <PDFDisplay />
 

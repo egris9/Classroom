@@ -2,6 +2,7 @@ import { Typography } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { fetchFileContent, getCourse, listFiles } from "../api/courses.js";
+import FileGenerations from "../components/FileGenerations.jsx";
 
 export function PDFDisplay() {
     const { courseid } = useParams();
@@ -73,16 +74,19 @@ export function PDFDisplay() {
                                 <ul className="space-y-2">
                                     {pdfList.length > 0 ? (
                                         pdfList.map((pdf) => (
-                                            <li key={pdf.id} className="flex justify-between items-center bg-gray-100 p-3 rounded-md">
-                                                <span className="text-gray-800">{pdf.fileName}</span>
-                                                <div className="flex gap-3">
-                                                    <button
-                                                        onClick={() => openPdf(pdf)}
-                                                        className="text-blue-500 hover:underline"
-                                                    >
-                                                        view PDF
-                                                    </button>
+                                            <li key={pdf.id} className="bg-gray-100 p-3 rounded-md">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-800">{pdf.fileName}</span>
+                                                    <div className="flex gap-3">
+                                                        <button
+                                                            onClick={() => openPdf(pdf)}
+                                                            className="text-blue-500 hover:underline"
+                                                        >
+                                                            view PDF
+                                                        </button>
+                                                    </div>
                                                 </div>
+                                                <FileGenerations file={pdf} role={role} />
                                             </li>
                                         ))
                                     ) : (

@@ -13,7 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -64,6 +65,23 @@ public class GenerationService {
         this.pdfText = pdfText;
         this.textGeneration = textGeneration;
         this.mapper = mapper;
+    }
+
+    /** Requests wait in memory, so any still PENDING after a restart will never run. */
+    @EventListener(ApplicationReadyEvent.class)
+    public void failInterrupted() {
+        failPending(summaries);
+        failPending(exerciseSets);
+    }
+
+    private <T extends Generated> void failPending(GeneratedRepository<T> repository) {
+        List<T> interrupted = repository.findByStatus(Status.PENDING);
+        for (T item : interrupted) {
+            item.setStatus(Status.FAILED);
+            item.setFailureCode("INTERRUPTED");
+            item.setFailureMessage("The server restarted before this finished. Please ask again.");
+        }
+        repository.saveAll(interrupted);
     }
 
     @PreDestroy
@@ -133,7 +151,7 @@ public class GenerationService {
         });
     }
 
-    private <T extends Generated> void run(Long id, JpaRepository<T, Long> repository, Consumer<T> work) {
+    private <T extends Generated> void run(Long id, GeneratedRepository<T> repository, Consumer<T> work) {
         T item = repository.findById(id).orElse(null);
         if (item == null) {
             return;
