@@ -40,6 +40,11 @@
     --destructive: 0 72% 51%;        /* red-600 */
     --destructive-foreground: 0 0% 100%;
 
+    --gradient-primary: linear-gradient(135deg, hsl(300 72% 40%), hsl(280 68% 42%));
+    --gradient-surface:
+      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(295 72% 40% / 0.10), transparent),
+      linear-gradient(180deg, hsl(295 30% 97%), hsl(288 28% 93%));
+
     --radius: 0.625rem;
   }
 
@@ -69,6 +74,11 @@
     --warning-foreground: 292 28% 8%;
     --destructive: 0 84% 60%;        /* red-500 */
     --destructive-foreground: 292 28% 8%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(292 91% 73%), hsl(275 85% 72%));
+    --gradient-surface:
+      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(292 91% 73% / 0.12), transparent),
+      linear-gradient(180deg, hsl(292 28% 9%), hsl(286 30% 6%));
   }
 
   * {
@@ -85,10 +95,26 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    background-image: var(--gradient-surface);
+    background-repeat: no-repeat;
+  }
+
+  /* The action colour as a gradient on every shadcn button and link-button. */
+  button.bg-primary,
+  a.bg-primary {
+    background-image: var(--gradient-primary);
+  }
+  button.bg-primary:hover,
+  a.bg-primary:hover {
+    filter: brightness(1.08);
   }
 
   h1, h2, h3, h4 {
     @apply font-display tracking-tight;
+  }
+
+  .bg-surface-gradient {
+    background-image: var(--gradient-surface);
   }
 
   @media (prefers-reduced-motion: reduce) {

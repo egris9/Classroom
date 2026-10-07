@@ -124,7 +124,7 @@ function Components() {
 // A plain function, not a component: it is called twice with a theme class.
 const specimen = (theme) => {
     return (
-        <div key={theme} className={cn(theme, "rounded-lg border bg-background p-5 text-foreground")}>
+        <div key={theme} className={cn(theme, "rounded-lg border bg-background bg-surface-gradient p-5 text-foreground")}>
             <h3 className="mb-4 text-xl font-semibold capitalize">{theme} theme</h3>
             <div className="space-y-8">
                 <TokenSwatches />
