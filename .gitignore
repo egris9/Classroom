@@ -1,5 +1,10 @@
 HELP.md
+/.env
 target/
+
+### Local agent files ###
+/claude.md
+/docs/IMPLEMENTATION_PLAN.md
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
