@@ -1,3 +1,102 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Palette (docs/IMPLEMENTATION_PLAN.md, U1). One family per job:
+ *   slate   surfaces, text, borders
+ *   blue    the one action colour (primary, ring)
+ *   emerald published, saved, done (success)
+ *   amber   pending, needs attention (warning)
+ *   red     delete, leave, errors (destructive)
+ * Values are HSL channels so Tailwind can add alpha.
+ */
+@layer base {
+  :root,
+  .light {
+    --background: 210 40% 98%;      /* slate-50 */
+    --foreground: 222 47% 11%;      /* slate-900 */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;           /* slate-100 */
+    --muted-foreground: 215 19% 35%; /* slate-600 */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --border: 214 32% 91%;          /* slate-200 */
+    --input: 213 27% 84%;           /* slate-300 */
+
+    --primary: 221 83% 53%;         /* blue-600 */
+    --primary-foreground: 0 0% 100%;
+    --ring: 221 83% 53%;
+
+    --success: 162 93% 24%;         /* emerald-700 */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;          /* amber-500 */
+    --warning-foreground: 229 84% 5%;
+    --destructive: 0 72% 51%;       /* red-600 */
+    --destructive-foreground: 0 0% 100%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 229 84% 5%;       /* slate-950 */
+    --foreground: 210 40% 98%;      /* slate-50 */
+    --card: 222 47% 11%;            /* slate-900 */
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;           /* slate-800 */
+    --muted-foreground: 215 20% 65%; /* slate-400 */
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 215 25% 27%;           /* slate-700 */
+
+    --primary: 217 91% 60%;         /* blue-500 */
+    --primary-foreground: 229 84% 5%;
+    --ring: 213 94% 68%;            /* blue-400 */
+
+    --success: 158 64% 52%;         /* emerald-400 */
+    --success-foreground: 229 84% 5%;
+    --warning: 43 96% 56%;          /* amber-400 */
+    --warning-foreground: 229 84% 5%;
+    --destructive: 0 84% 60%;       /* red-500 */
+    --destructive-foreground: 229 84% 5%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

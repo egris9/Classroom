@@ -1,6 +1,5 @@
 import { Typography } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
-import { NavBar } from "./components/navbar.jsx";
 import { useParams, Link } from "react-router-dom";
 import client, { API_URL } from '../api/client.js';
 
@@ -34,7 +33,6 @@ export function PDFDisplay() {
 
     return (
         <section className="min-h-screen bg-purple-50">
-            <NavBar />
             <div className="flex items-center justify-center mt-24 px-4">
                 <div className="flex flex-col w-full gap-6 mx-auto max-w-4xl bg-gray-50 p-6 md:p-8 rounded-2xl">
                     {/* Title and subtitle centered */}

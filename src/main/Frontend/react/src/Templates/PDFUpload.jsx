@@ -1,7 +1,6 @@
 import { Button, Typography, Input } from "@material-tailwind/react";
 import { useState } from "react";
 import {  pdfjs } from "react-pdf";
-import { NavBar } from "./components/navbar.jsx";
 import client from "../api/client.js";
 
 
@@ -54,7 +53,6 @@ export function PDFUpload() {
 
     return (
         <section className="min-h-screen bg-purple-50">
-            <NavBar />
             <div className="flex items-center justify-center mt-48 px-4">
                 <div className="flex flex-col md:flex-row w-full gap-6 mx-auto max-w-6xl justify-between bg-gray-50 p-6 md:p-10 rounded-2xl">
                     <div className="flex flex-col gap-3 flex-1 items-center md:items-start text-center md:text-left mt-20">

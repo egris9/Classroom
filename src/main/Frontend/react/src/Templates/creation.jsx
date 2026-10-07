@@ -1,6 +1,5 @@
 import { Button, Input, Typography } from "@material-tailwind/react";
 import { useState , useCallback  } from "react";
-import { NavBar } from "./components/navbar.jsx";
 import { createCourse } from "../api/courses.js";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 
@@ -63,7 +62,6 @@ export function Creation() {
 
     return (
         <section className="min-h-screen bg-purple-50">
-            <NavBar/>
             <div className="flex items-center justify-center mt-48 px-4">
                 <div
                     className="flex flex-col md:flex-row w-full gap-6 mx-auto max-w-6xl justify-between bg-gray-50 p-6 md:p-10 rounded-2xl">

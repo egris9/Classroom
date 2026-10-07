@@ -1,4 +1,3 @@
-import { NavBar } from "./components/navbar.jsx";
 import {Button, Typography} from "@material-tailwind/react";
 import { motion } from "motion/react"
 import ImClass from "../static/imgs/AIgen.png";
@@ -22,8 +21,6 @@ export function Home() {
     };
     return(
         <div className="bg-purple-50 min-h-screen">
-            {/* Navbar at the top */}
-            <NavBar/>
             {/* Welcome Section */}
             <div
                 className="grid grid-cols-5 grid-rows-[500px,1Fr] w-full max-w-[90%] mx-auto justify-center mt-14 gap-8">

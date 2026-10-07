@@ -35,4 +35,14 @@ export default [
       ],
     },
   },
+  {
+    // shadcn components are JavaScript and carry no PropTypes.
+    files: ['src/components/**/*.{js,jsx}'],
+    rules: { 'react/prop-types': 'off' },
+  },
+  {
+    // The CLI writes `import * as React` into some files that no longer use it.
+    files: ['src/components/ui/**/*.{js,jsx}'],
+    rules: { 'no-unused-vars': ['error', { varsIgnorePattern: '^React$' }] },
+  },
 ]

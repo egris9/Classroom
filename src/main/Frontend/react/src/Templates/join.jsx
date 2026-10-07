@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button, Input,Typography } from '@material-tailwind/react'; // Assuming you're using Material Tailwind for Typography
-import { NavBar } from "./components/navbar.jsx";
 import { joinCourseByCode } from "../api/courses.js";
 
 
@@ -35,7 +34,6 @@ export function JoinPage() {
 
     return (
         <section className="min-h-screen bg-purple-50">
-            <NavBar/>
             <div className="flex items-center justify-center mt-56">
                 <div className="flex flex-col md:flex-row w-full max-w-6xl justify-between bg-gray-50 p-20 rounded-2xl">
                     <div
