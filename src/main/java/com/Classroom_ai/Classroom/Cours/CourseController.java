@@ -2,7 +2,7 @@ package com.Classroom_ai.Classroom.Cours;
 import com.Classroom_ai.Classroom.CourseFile.CourseFile;
 import com.Classroom_ai.Classroom.User.User;
 
-import com.Classroom_ai.Classroom.User.UserService;
+import com.Classroom_ai.Classroom.auth.UserService;
 import io.micrometer.common.lang.NonNull;
 
 import jakarta.validation.Valid;

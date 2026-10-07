@@ -1,6 +1,6 @@
 package com.Classroom_ai.Classroom;
 
-import com.Classroom_ai.Classroom.User.JwtTokenUtil;
+import com.Classroom_ai.Classroom.auth.JwtTokenUtil;
 import com.Classroom_ai.Classroom.User.User;
 import com.Classroom_ai.Classroom.User.UserRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -47,6 +47,7 @@ class EndpointBaselineTest {
     @Autowired MockMvc mvc;
     @Autowired UserRepository users;
     @Autowired BCryptPasswordEncoder encoder;
+    @Autowired JwtTokenUtil jwt;
     @Value("${upload.dir}") String uploadDir;
 
     @BeforeAll
@@ -62,20 +63,20 @@ class EndpointBaselineTest {
         mvc.perform(post("/api/auth/signup")
                         .param("firstName", "Ada").param("lastName", "Lovelace")
                         .param("email", email).param("password", PASSWORD))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.firstName").value("Ada"))
-                .andExpect(jsonPath("$.profilePicturePath").value("default-profile.png"));
+                .andExpect(jsonPath("$.picture").value("default-profile.png"));
     }
 
     @Test
-    void signin_returnsTokenAndFirstName() throws Exception {
+    void signin_returnsTokenAndUser() throws Exception {
         User user = newUser("Grace");
         mvc.perform(post("/api/auth/signin")
-                        .param("email", user.getEmail()).param("password", PASSWORD))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"" + user.getEmail() + "\",\"password\":\"" + PASSWORD + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value(notNullValue()))
-                .andExpect(jsonPath("$.firstName").value("Grace"));
+                .andExpect(jsonPath("$.user.firstName").value("Grace"));
     }
 
     @Test
@@ -184,8 +185,8 @@ class EndpointBaselineTest {
         return UUID.randomUUID() + "@example.com";
     }
 
-    private static String tokenFor(User user) {
-        return JwtTokenUtil.generateToken(user);
+    private String tokenFor(User user) {
+        return jwt.generateToken(user);
     }
 
     private static String courseJson(String name) {

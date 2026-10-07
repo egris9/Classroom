@@ -1,4 +1,10 @@
-package com.Classroom_ai.Classroom.User;
+package com.Classroom_ai.Classroom.auth;
+
+import com.Classroom_ai.Classroom.api.ErrorBody;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.web.AuthenticationEntryPoint;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,12 +28,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenUtil jwtTokenUtil, ObjectMapper mapper) throws Exception {
         http
-                .addFilterBefore(new JwtAuthFilter(), UsernamePasswordAuthenticationFilter.class) // Ajouter le filtre de validation JWT
+                .addFilterBefore(new JwtAuthFilter(jwtTokenUtil), UsernamePasswordAuthenticationFilter.class) // Ajouter le filtre de validation JWT
                 .cors(corsConfigurer -> corsConfigurer
                         .configurationSource(corsConfigurationSource())) // Appliquer la configuration CORS
                 .csrf(AbstractHttpConfigurer::disable) // Désactiver CSRF pour les API
+                .exceptionHandling(e -> e.authenticationEntryPoint(unauthorizedEntryPoint(mapper)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("Templates/components/courses/course_card/**").permitAll()
@@ -48,5 +55,14 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration); // Appliquer la configuration à toutes les routes
         return source;
+    }
+
+    private static AuthenticationEntryPoint unauthorizedEntryPoint(ObjectMapper mapper) {
+        return (request, response, authException) -> {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            mapper.writeValue(response.getOutputStream(),
+                    new ErrorBody("UNAUTHORIZED", "Authentication is required."));
+        };
     }
 }

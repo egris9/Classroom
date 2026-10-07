@@ -1,23 +1,17 @@
 package com.Classroom_ai.Classroom.Cours;
 import com.Classroom_ai.Classroom.CourseFile.CourseFile;
 import com.Classroom_ai.Classroom.CourseFile.CourseFileRepository;
-import com.Classroom_ai.Classroom.User.UserService;
+import com.Classroom_ai.Classroom.auth.UserService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import com.Classroom_ai.Classroom.User.User;
 import com.Classroom_ai.Classroom.User.UserRepository;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -38,17 +32,6 @@ public class CourseService {
 
     }
 
-    @RestControllerAdvice
-    public static class GlobalExceptionHandler {
-
-        private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-        @ExceptionHandler(Exception.class)
-        public ResponseEntity<String> handleException(Exception e) {
-            logger.error("Internal Server Error occurred: {}", e.getMessage(), e); // Log the full stack trace
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur interne du serveur.");
-        }
-    }
 
     public Course createCourse(Course course) {
         // Check for duplicate course name
