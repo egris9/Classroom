@@ -6,6 +6,7 @@ target/
 /claude.md
 /docs/IMPLEMENTATION_PLAN.md
 /docs/PROBLEMS_AND_CONTEXT.md
+/docs/human-ai-plan.md
 /CONTEXT.md
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
