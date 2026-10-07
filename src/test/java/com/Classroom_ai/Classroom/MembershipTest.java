@@ -3,6 +3,8 @@ package com.Classroom_ai.Classroom;
 import com.Classroom_ai.Classroom.User.User;
 import com.Classroom_ai.Classroom.User.UserRepository;
 import com.Classroom_ai.Classroom.auth.JwtTokenUtil;
+import com.Classroom_ai.Classroom.course.CourseFile;
+import com.Classroom_ai.Classroom.course.CourseFileRepository;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -49,6 +52,7 @@ class MembershipTest {
     @Autowired UserRepository users;
     @Autowired BCryptPasswordEncoder encoder;
     @Autowired JwtTokenUtil jwt;
+    @Autowired CourseFileRepository files;
 
     @BeforeAll
     static void createUploadDir(@Value("${upload.dir}") String dir) throws Exception {
@@ -341,6 +345,21 @@ class MembershipTest {
         mvc.perform(get("/api/files/999999/content").header("Authorization", bearer(newUser("Teach"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("FILE_NOT_FOUND"));
+    }
+
+    @Test
+    void fileContent_quoteInFileName_isEscapedInContentDisposition() throws Exception {
+        String teacher = bearer(newUser("Teach"));
+        String courseId = idOf(createCourse(teacher, "Quote-" + UUID.randomUUID()));
+        String fileId = uploadPdf(teacher, courseId);
+        // A display name can hold a quote even where the disk cannot (Windows), so set it on the record.
+        CourseFile stored = files.findById(Long.valueOf(fileId)).orElseThrow();
+        stored.setFileName("we\"ird.pdf");
+        files.save(stored);
+
+        mvc.perform(get("/api/files/" + fileId + "/content").header("Authorization", teacher))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "inline; filename=\"we\\\"ird.pdf\""));
     }
 
     // --- the old open routes are gone (P6, P7) ---
