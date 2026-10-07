@@ -8,7 +8,7 @@ import com.Classroom_ai.Classroom.api.JoinRequest;
 import com.Classroom_ai.Classroom.auth.UserService;
 import com.Classroom_ai.Classroom.membership.Role;
 import jakarta.validation.Valid;
-import org.springframework.core.io.FileSystemResource;
+import com.Classroom_ai.Classroom.material.Materials;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -19,9 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -30,11 +27,14 @@ public class CourseController {
     private final CourseService courseService;
     private final CourseFileService fileService;
     private final UserService userService;
+    private final Materials materials;
 
-    public CourseController(CourseService courseService, CourseFileService fileService, UserService userService) {
+    public CourseController(CourseService courseService, CourseFileService fileService, UserService userService,
+                            Materials materials) {
         this.courseService = courseService;
         this.fileService = fileService;
         this.userService = userService;
+        this.materials = materials;
     }
 
     @PostMapping("/courses")
@@ -72,16 +72,13 @@ public class CourseController {
     @GetMapping("/files/{id}/content")
     public ResponseEntity<Resource> content(@PathVariable Long id) throws IOException {
         CourseFile file = fileService.get(userService.getAuthenticatedUser(), id);
-        Path path = Paths.get(file.getFilePath());
-        if (!Files.isReadable(path)) {
-            throw new CourseFileNotFoundException("The stored file is missing.");
-        }
+        Resource pdf = materials.open(file);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename(file.getFileName()).build().toString())
-                .contentLength(Files.size(path))
-                .body(new FileSystemResource(path));
+                .contentLength(pdf.contentLength())
+                .body(pdf);
     }
 
     private static CourseResponse respond(CourseAccess access) {
