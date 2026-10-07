@@ -139,7 +139,7 @@ public class Materials {
         if (original == null) {
             return FALLBACK_NAME;
         }
-        String name = original.replace('\\', '/');
+        String name = original.replaceAll("\\p{Cntrl}", "").replace('\\', '/');
         name = name.substring(name.lastIndexOf('/') + 1).strip();
         if (name.isEmpty() || name.equals("..")) {
             return FALLBACK_NAME;

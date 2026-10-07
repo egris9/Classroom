@@ -76,6 +76,13 @@ class MaterialsTest {
         assertEquals("evil.pdf", stored.displayName());
     }
 
+    @Test
+    void displayName_dropsControlCharactersSoItCannotBreakAHeader() throws Exception {
+        StoredFile stored = materialsAt(dir).put(new Course(), pdf("a\r\nSet-Cookie: x=1\u0000.pdf"));
+
+        assertEquals("aSet-Cookie: x=1.pdf", stored.displayName());
+    }
+
     // --- P30: types by magic bytes ---
 
     @Test
