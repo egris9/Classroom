@@ -2,6 +2,11 @@ package com.Classroom_ai.Classroom.api;
 
 import com.Classroom_ai.Classroom.auth.EmailAlreadyTakenException;
 import com.Classroom_ai.Classroom.auth.InvalidCredentialsException;
+import com.Classroom_ai.Classroom.course.AlreadyTeacherException;
+import com.Classroom_ai.Classroom.course.CourseFileNotFoundException;
+import com.Classroom_ai.Classroom.course.CourseNameTakenException;
+import com.Classroom_ai.Classroom.course.CourseNotFoundException;
+import com.Classroom_ai.Classroom.membership.ForbiddenException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -9,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /** The one place that maps exception types to a status and a {code, message} body. */
 @RestControllerAdvice
@@ -29,6 +36,36 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorBody> invalidBody(MethodArgumentNotValidException e) {
         return respond(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "The request body is invalid.");
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestPartException.class})
+    public ResponseEntity<ErrorBody> badRequest(Exception e) {
+        return respond(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "The request is malformed.");
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorBody> forbidden(ForbiddenException e) {
+        return respond(HttpStatus.FORBIDDEN, "FORBIDDEN", e.getMessage());
+    }
+
+    @ExceptionHandler(CourseNotFoundException.class)
+    public ResponseEntity<ErrorBody> courseNotFound(CourseNotFoundException e) {
+        return respond(HttpStatus.NOT_FOUND, "COURSE_NOT_FOUND", e.getMessage());
+    }
+
+    @ExceptionHandler(CourseFileNotFoundException.class)
+    public ResponseEntity<ErrorBody> fileNotFound(CourseFileNotFoundException e) {
+        return respond(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", e.getMessage());
+    }
+
+    @ExceptionHandler(CourseNameTakenException.class)
+    public ResponseEntity<ErrorBody> courseNameTaken(CourseNameTakenException e) {
+        return respond(HttpStatus.CONFLICT, "COURSE_NAME_TAKEN", e.getMessage());
+    }
+
+    @ExceptionHandler(AlreadyTeacherException.class)
+    public ResponseEntity<ErrorBody> alreadyTeacher(AlreadyTeacherException e) {
+        return respond(HttpStatus.CONFLICT, "ALREADY_TEACHER", e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

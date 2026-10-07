@@ -9,7 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import java.util.Set;
-import com.Classroom_ai.Classroom.Cours.Course;
+import com.Classroom_ai.Classroom.course.Course;
 
 @Getter
 @Setter
