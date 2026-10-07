@@ -12,5 +12,6 @@ export default defineConfig({
   },
   server: {
     port: 5175, // Fixez ici le port
+    strictPort: true, // the backend allows only this origin: fail instead of moving to 5176
   },
 })
