@@ -107,10 +107,10 @@ class AuthTest {
     @Test
     void protectedRoute_withTokenSignedByAnotherSecret_returns401() throws Exception {
         User user = newUser();
-        String oldHardcodedSecret = "E0FOKBr7NIxNVKR3eWLZjDxtilkDk4zDzv11MuG7jKkdm10UMj5GtnvMRvLsY9wM/NRiaRg8cX57DuVZoP+h6Q==";
+        String otherSecret = "some-other-secret-some-other-secret-some-other-secret-9876543210";
         String token = Jwts.builder().setSubject(user.getEmail())
                 .setExpiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(Keys.hmacShaKeyFor(oldHardcodedSecret.getBytes()), SignatureAlgorithm.HS256).compact();
+                .signWith(Keys.hmacShaKeyFor(otherSecret.getBytes()), SignatureAlgorithm.HS256).compact();
         mvc.perform(get("/api/courses/courses").param("type", "any")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());

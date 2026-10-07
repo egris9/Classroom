@@ -25,13 +25,11 @@ export function Form({ signIn }) {
         }
 
         try {
-            const response = await signInn(email, password); // Appel API pour se connecter
-            console.log("Sign In Successful:", response);
+            await signInn(email, password); // Appel API pour se connecter
 
             // Redirection après une connexion réussie
             navigate("/"); // Rediriger vers la page d'accueil ou une page protégée
         } catch (err) {
-            console.error("Sign In Error:", err);
             setError(err.response?.data?.message || "Sign In Failed. Please check your credentials.");
         }
     };

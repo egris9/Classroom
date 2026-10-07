@@ -2,7 +2,7 @@ import { Typography } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
 import { NavBar } from "./components/navbar.jsx";
 import { useParams, Link } from "react-router-dom";
-import axios from 'axios';
+import client, { API_URL } from '../api/client.js';
 
 export function PDFDisplay() {
     const { courseid } = useParams();
@@ -13,14 +13,12 @@ export function PDFDisplay() {
     // Function to fetch PDF files
     const fetchPDFs = async () => {
         try {
-            const response = await axios.get(
-                `http://localhost:8080/api/course-files/course/${courseid}`
+            const response = await client.get(
+                `/api/course-files/course/${courseid}`
             );
             setPdfList(response.data);
-            console.log(response.data)
         } catch (error) {
             setError(error.response?.data?.message || "An error occurred while fetching PDFs.");
-            console.log(error)
         } finally {
             setIsLoading(false);
         }
@@ -68,7 +66,7 @@ export function PDFDisplay() {
                                                 <span className="text-gray-800">{pdf.fileName}</span>
                                                 <div className="flex gap-3">
                                                     <button
-                                                        onClick={() => window.open(`http://localhost:8080/api/course-files/view/${pdf.id}`, '_blank')
+                                                        onClick={() => window.open(`${API_URL}/api/course-files/view/${pdf.id}`, '_blank')
                                                         }
                                                         className="text-blue-500 hover:underline"
                                                     >

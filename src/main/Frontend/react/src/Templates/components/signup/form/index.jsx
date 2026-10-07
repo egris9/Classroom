@@ -43,12 +43,10 @@ export function Form({ handleSignUp }) {
         }
 
         try {
-            const response = await signUp(formDataToSend);  // Use formDataToSend, not formData
-            console.log("Sign Up Successful:", response);
+            await signUp(formDataToSend);  // Use formDataToSend, not formData
             window.location.href = "/signing";  // Redirect to sign-in page
         } catch (err) {
-            console.error("Error Details:", err);
-            setError(err.message || "Sign Up Failed");
+            setError(err.response?.data?.message || err.message || "Sign Up Failed");
         }
     };
 

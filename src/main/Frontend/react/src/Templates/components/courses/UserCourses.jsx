@@ -10,11 +10,8 @@ const UserCourses = () => {
     useEffect(() => {
         const fetchCourses = async () => {
             try {
-                const token = localStorage.getItem("jwt_token");
-                console.log("JWT Token:", token);
 
                 const coursesData = await getCourses("user");
-                console.log("Courses Data:", coursesData);
 
                 if (Array.isArray(coursesData)) {
                     const created = coursesData.filter(course => course.type === "created");

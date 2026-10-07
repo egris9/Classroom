@@ -8,6 +8,7 @@ import {
     IconButton,
 } from "@material-tailwind/react";
 import {Link} from "react-router-dom";
+import { clearSession, getFirstName, getToken } from "../../api/auth.js";
 
 
 export function NavBar() {
@@ -21,10 +22,8 @@ export function NavBar() {
         };
 
         // Vérifier si l'utilisateur est connecté au chargement
-        const token = localStorage.getItem("jwt_token");
-        const userFirstName = localStorage.getItem("user_firstname");
-        // Vérifier si le prénom est bien récupéré depuis localStorage
-        console.log("Prénom récupéré depuis localStorage:", userFirstName);
+        const token = getToken();
+        const userFirstName = getFirstName();
 
         if (token && userFirstName) {
             setUser({ firstname: userFirstName });
@@ -36,8 +35,7 @@ export function NavBar() {
 
     const handleSignOut = () => {
         // Déconnexion : Supprimer le jeton et réinitialiser l'état
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('user_firstname');
+        clearSession();
         setUser(null);
     };
 

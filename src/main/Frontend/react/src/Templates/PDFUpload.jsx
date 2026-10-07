@@ -2,7 +2,7 @@ import { Button, Typography, Input } from "@material-tailwind/react";
 import { useState } from "react";
 import {  pdfjs } from "react-pdf";
 import { NavBar } from "./components/navbar.jsx";
-import axios from "axios";
+import client from "../api/client.js";
 
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -37,8 +37,7 @@ export function PDFUpload() {
             try {
                 const formData = new FormData();
                 formData.append('file', pdfFile);
-                const response = await axios.post(`http://localhost:8080/api/course-files/upload/${courseCode}`, formData);
-                console.log(response.data)
+                await client.post(`/api/course-files/upload/${courseCode}`, formData);
 
                 setSuccessMessage("PDF successfully uploaded!");
                 setCourseName(""); // Reset course name input

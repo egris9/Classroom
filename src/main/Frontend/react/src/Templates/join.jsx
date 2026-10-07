@@ -18,7 +18,6 @@ export function JoinPage() {
             return;
         }
 
-        console.log("Code d'accès soumis : ", joinCode); // Ajout de log
 
         setError(null);
 

@@ -45,7 +45,6 @@ export function Creation() {
 
                 if (response) {
                     // Ajoutez un log pour inspecter la réponse de l'API
-                    console.log("Réponse API:", response);
                     setAccessCode(response.accessCode); // Mettre à jour accessCode avec la réponse de l'API
                     setSuccessMessage("The course has been successfully created !");
                     resetForm()

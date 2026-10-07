@@ -1,11 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { API_URL } from "../../../api/client.js";
 
 const CourseCard = ({ course }) => {
     const {  name, teacher } = course;
 
     // Add your base URL here. This might be different based on your deployment environment.
-    const BASE_URL = "http://localhost:8080/api/auth/profile-picture/";  // Update this with your actual base URL
+    const BASE_URL = `${API_URL}/api/auth/profile-picture/`;
 
     return (
         <Link to={`/coursepdfs/${course.id}`} className="block">

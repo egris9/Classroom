@@ -12,6 +12,7 @@ import PDFDisplay from "./Templates/PDFDisplay.jsx"
 import Tools1 from "./Templates/tools.jsx"
 import { ThemeProvider } from "@material-tailwind/react";
 import Creation from "./Templates/creation.jsx";
+import RequireAuth from "./RequireAuth.jsx";
 
 const root = document.getElementById("root");
 
@@ -23,12 +24,14 @@ ReactDOM.createRoot(root).render(
                         <Route path="/signing" element={<SignIn />} />
                         <Route path="/signup" element={<SignUp />} />
                         <Route path="/" element={<Home />} />
+                        <Route element={<RequireAuth />}>
                         <Route path="/creation" element={<Creation />} />
                         <Route path="/join" element={<JoinPage />} />
                         <Route path="/courses" element={<Courses />} />
                         <Route path="/pdfupload/:courseid" element={<PDFUpload />} />
                         <Route path="/coursepdfs/:courseid" element={<PDFDisplay />} />
                         <Route path="/tools" element={<Tools1 />} />
+                        </Route>
 
                 </Routes>
             </ThemeProvider>
