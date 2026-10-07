@@ -26,14 +26,14 @@ import { cn } from "@/lib/utils";
 
 // Full class names so Tailwind can see them.
 const TOKENS = [
-    { group: "Slate: surfaces, text, borders", items: [
+    { group: "Mauve: surfaces, text, borders", items: [
         { name: "--background", swatch: "bg-background text-foreground border" },
         { name: "--foreground", swatch: "bg-foreground text-background" },
         { name: "--card", swatch: "bg-card text-card-foreground border" },
         { name: "--muted", swatch: "bg-muted text-muted-foreground border" },
         { name: "--border", swatch: "bg-border text-foreground" },
     ] },
-    { group: "Blue: the action colour", items: [
+    { group: "Magenta: the action colour", items: [
         { name: "--primary", swatch: "bg-primary text-primary-foreground" },
         { name: "--ring", swatch: "bg-ring text-primary-foreground" },
     ] },
