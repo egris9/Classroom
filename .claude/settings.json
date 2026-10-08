@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw -q test)",
+      "Bash(./mvnw -q test -Dtest=*)",
+      "Bash(./mvnw test)",
+      "Bash(npm --prefix src/main/Frontend/react run lint)",
+      "Bash(npm --prefix src/main/Frontend/react run build)",
+      "Bash(winget show *)",
+      "Bash(winget search *)",
+      "Bash(nvidia-smi)"
+    ]
+  }
+}
