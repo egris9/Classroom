@@ -34,6 +34,10 @@ public class LocalTextGeneration implements TextGeneration {
             "You summarise course material for students. Answer in the language of the text.";
     private static final String SUMMARISE_PART =
             "You summarise one part of a longer course document. Keep the key points. Answer in the language of the text.";
+    private static final String EXERCISES =
+            "You write exercises for students from course material. An exercise is an open question with a model "
+                    + "answer. Write in the language of the text. Reply with only a JSON array of objects with the "
+                    + "keys \"question\" and \"answer\".";
     private static final String COMBINE =
             "You are given summaries of consecutive parts of one course document. Write one summary of the whole "
                     + "document. Answer in the language of the summaries.";
@@ -107,9 +111,71 @@ public class LocalTextGeneration implements TextGeneration {
         return chunks.isEmpty() ? List.of("") : chunks;
     }
 
+    /**
+     * The exercises are shared out over the chunks of the text, spread from the start to the end, so a long
+     * document is asked about throughout and not only at the beginning.
+     */
     @Override
     public List<Exercise> generateExercises(String text, int count) {
-        throw new UnsupportedOperationException("not yet");
+        List<String> chunks = split(text.strip());
+        int[] perChunk = new int[chunks.size()];
+        for (int i = 0; i < count; i++) {
+            perChunk[(int) ((i + 0.5) * chunks.size() / count)]++;
+        }
+        List<Exercise> exercises = new ArrayList<>();
+        for (int i = 0; i < chunks.size(); i++) {
+            if (perChunk[i] > 0) {
+                exercises.addAll(exercisesFrom(chunks.get(i), perChunk[i]));
+            }
+        }
+        return exercises;
+    }
+
+    /** Asks for JSON; if the reply is not the right shape, says so and asks once more. */
+    private List<Exercise> exercisesFrom(String chunk, int count) {
+        List<Map<String, String>> messages = new ArrayList<>(List.of(
+                message("system", EXERCISES),
+                message("user", "Write exactly " + count + " exercises from this text.\n\nText:\n" + chunk)));
+        String reply = chat(messages);
+        List<Exercise> exercises = parseExercises(reply, count);
+        if (exercises == null) {
+            messages.add(message("assistant", reply));
+            messages.add(message("user", "That was not valid. Reply with only a JSON array of exactly " + count
+                    + " objects, each with the keys \"question\" and \"answer\"."));
+            exercises = parseExercises(chat(messages), count);
+        }
+        if (exercises == null) {
+            throw new GenerationFailure("BAD_OUTPUT", "The model did not return exercises in the expected form.");
+        }
+        return exercises;
+    }
+
+    /** The first {@code count} exercises of the JSON array in the reply, or null if the reply is not one. */
+    private List<Exercise> parseExercises(String reply, int count) {
+        int open = reply.indexOf('[');
+        int close = reply.lastIndexOf(']');
+        if (open < 0 || close < open) {
+            return null;
+        }
+        try {
+            JsonNode array = mapper.readTree(reply.substring(open, close + 1));
+            if (!array.isArray() || array.size() < count) {
+                return null;
+            }
+            List<Exercise> exercises = new ArrayList<>();
+            for (JsonNode item : array) {
+                String question = item.path("question").asText("").strip();
+                String answer = item.path("answer").asText("").strip();
+                if (!item.path("question").isTextual() || !item.path("answer").isTextual()
+                        || question.isEmpty() || answer.isEmpty()) {
+                    return null;
+                }
+                exercises.add(new Exercise(question, answer));
+            }
+            return exercises.subList(0, count);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
     @Override
@@ -119,11 +185,19 @@ public class LocalTextGeneration implements TextGeneration {
 
     /** One round trip: a system and a user message in, the assistant's text out. */
     String chat(String system, String user) {
+        return chat(List.of(message("system", system), message("user", user)));
+    }
+
+    private static Map<String, String> message(String role, String content) {
+        return Map.of("role", role, "content", content);
+    }
+
+    private String chat(List<Map<String, String>> messages) {
         String body;
         try {
             body = mapper.writeValueAsString(Map.of(
                     "model", model,
-                    "messages", List.of(Map.of("role", "system", "content", system), Map.of("role", "user", "content", user)),
+                    "messages", messages,
                     "temperature", 0.2,
                     "chat_template_kwargs", Map.of("enable_thinking", false)));
         } catch (JsonProcessingException e) {
