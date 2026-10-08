@@ -28,7 +28,7 @@ The backend reads environment variables, and also a `.env` file in the repo root
 | `UPLOAD_DIR` | `uploads` | Folder for PDFs (`files/`) and profile pictures (`pictures/`). Created on startup. |
 | `UPLOAD_MAX_SIZE` | `20MB` | Largest course PDF |
 | `UPLOAD_MAX_PICTURE_SIZE` | `2MB` | Largest profile picture |
-| `GENERATION_ADAPTER` | `fake` | `fake` or `local` |
+| `GENERATION_ADAPTER` | `fake` | `fake` or `local`. Without the three `GENERATION_*` lines of `.env.example` the adapter is `fake` and summaries are demo quotes of the PDF, not real summaries. |
 | `GENERATION_BASE_URL` | empty | Model server url, for example `http://127.0.0.1:8081`. Required when the adapter is `local`. |
 | `GENERATION_MODEL` | empty | Model name sent with each request |
 | `GENERATION_TIMEOUT` | `120s` | Time allowed for one call to the model |

@@ -25,6 +25,18 @@ function ResultBadge({ item }) {
     );
 }
 
+function DemoNotice({ item }) {
+    if (item.model !== "fake") {
+        return null;
+    }
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Demo output</Badge>
+            <span className="text-sm text-muted-foreground">No model is connected, so this only quotes the PDF.</span>
+        </div>
+    );
+}
+
 function Failure({ item }) {
     if (item.status !== "FAILED") {
         return null;
@@ -130,6 +142,7 @@ export function FileResults({ file, role }) {
                                 <span className="text-sm font-medium">Summary</span>
                                 <ResultBadge item={summary} />
                             </div>
+                            <DemoNotice item={summary} />
                             {summary.text && <p className="whitespace-pre-wrap text-sm">{summary.text}</p>}
                             <Failure item={summary} />
                         </CardContent>
@@ -162,6 +175,7 @@ export function FileResults({ file, role }) {
                                 <span className="text-sm font-medium">Exercises</span>
                                 <ResultBadge item={set} />
                             </div>
+                            <DemoNotice item={set} />
                             <ol className="list-decimal space-y-3 pl-5 text-sm">
                                 {(set.exercises ?? []).map((exercise) => (
                                     <li key={exercise.question}>
