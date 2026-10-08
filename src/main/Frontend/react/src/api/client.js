@@ -3,7 +3,8 @@ import { clearSession, getToken } from "./auth.js";
 
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
-const client = axios.create({ baseURL: API_URL });
+// Credentials travel so the AI tools' `trial` cookie reaches the backend, which is another origin in development.
+const client = axios.create({ baseURL: API_URL, withCredentials: true });
 
 client.interceptors.request.use((config) => {
     const token = getToken();

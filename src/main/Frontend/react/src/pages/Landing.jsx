@@ -20,6 +20,9 @@ export default function Landing() {
                         <Button asChild className="h-12 px-6 text-base">
                             <Link to="/signup">Sign up</Link>
                         </Button>
+                        <Button asChild variant="outline" className="h-12 px-6 text-base">
+                            <Link to="/tools">Try it free</Link>
+                        </Button>
                         <Button asChild variant="ghost" className="h-12 px-6 text-base">
                             <Link to="/signin">I already have an account</Link>
                         </Button>

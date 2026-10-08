@@ -3,11 +3,11 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Markdown } from "@/components/Markdown";
+import { ExerciseList } from "@/components/ExerciseList";
 import { StatusBadge } from "@/components/StatusBadge";
+import { SummaryCard } from "@/components/SummaryCard";
 import { listExerciseSets, listSummaries, requestExerciseSet, requestSummary } from "../api/generation.js";
 
 const POLL_MS = 2000;
@@ -23,29 +23,6 @@ function ResultBadge({ item }) {
         <StatusBadge status="success">Published</StatusBadge>
     ) : (
         <Badge variant="outline">Only you</Badge>
-    );
-}
-
-function DemoNotice({ item }) {
-    if (item.model !== "fake") {
-        return null;
-    }
-    return (
-        <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">Demo output</Badge>
-            <span className="text-sm text-muted-foreground">No model is connected, so this only quotes the PDF.</span>
-        </div>
-    );
-}
-
-function Failure({ item }) {
-    if (item.status !== "FAILED") {
-        return null;
-    }
-    return (
-        <p role="alert" className="text-sm text-destructive">
-            {item.failureMessage} ({item.failureCode})
-        </p>
     );
 }
 
@@ -137,17 +114,7 @@ export function FileResults({ file, role }) {
                 )}
                 {summaries.length === 0 && <Empty>No summary yet. Choose Summarise to make one.</Empty>}
                 {summaries.map((summary) => (
-                    <Card key={summary.id}>
-                        <CardContent className="space-y-2 p-4">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-medium">Summary</span>
-                                <ResultBadge item={summary} />
-                            </div>
-                            <DemoNotice item={summary} />
-                            {summary.text && <Markdown>{summary.text}</Markdown>}
-                            <Failure item={summary} />
-                        </CardContent>
-                    </Card>
+                    <SummaryCard key={summary.id} summary={summary} badge={<ResultBadge item={summary} />} />
                 ))}
             </TabsContent>
 
@@ -170,27 +137,7 @@ export function FileResults({ file, role }) {
                     </Empty>
                 )}
                 {exerciseSets.map((set) => (
-                    <Card key={set.id}>
-                        <CardContent className="space-y-2 p-4">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-medium">Exercises</span>
-                                <ResultBadge item={set} />
-                            </div>
-                            <DemoNotice item={set} />
-                            <ol className="list-decimal space-y-3 pl-5 text-sm">
-                                {(set.exercises ?? []).map((exercise) => (
-                                    <li key={exercise.question}>
-                                        <p dir="auto">{exercise.question}</p>
-                                        <details className="text-muted-foreground">
-                                            <summary className="min-h-11 cursor-pointer py-2">Show answer</summary>
-                                            <p dir="auto">{exercise.answer}</p>
-                                        </details>
-                                    </li>
-                                ))}
-                            </ol>
-                            <Failure item={set} />
-                        </CardContent>
-                    </Card>
+                    <ExerciseList key={set.id} set={set} badge={<ResultBadge item={set} />} />
                 ))}
             </TabsContent>
         </Tabs>
