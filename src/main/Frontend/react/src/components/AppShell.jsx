@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, Menu, Plus } from "lucide-react";
+import { ChevronDown, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -19,7 +19,9 @@ import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
-import { clearSession, getFirstName, isSignedIn } from "../api/auth.js";
+import { clearSession, getUser, isSignedIn } from "../api/auth.js";
+import ImagePlaceholder from "./ImagePlaceholder.jsx";
+import UserAvatar from "./UserAvatar.jsx";
 
 const linkClass = ({ isActive }) =>
     cn(
@@ -33,21 +35,14 @@ export function AppShell() {
     // The shell stays mounted across routes, so read the session on each render.
     useLocation();
     const signedIn = isSignedIn();
-    const firstName = getFirstName();
+    const user = getUser();
+    const fullName = user ? `${user.firstName} ${user.lastName}` : "";
 
     const signOut = () => {
         clearSession();
         setMenuOpen(false);
-        navigate("/signing");
+        navigate("/signin");
     };
-
-    const memberLinks = (
-        <>
-            <NavLink to="/courses" className={linkClass} onClick={() => setMenuOpen(false)}>
-                Courses
-            </NavLink>
-        </>
-    );
 
     return (
         <div className="flex min-h-screen flex-col text-foreground">
@@ -64,45 +59,42 @@ export function AppShell() {
                 >
                     <Link
                         to="/"
-                        className="mr-4 rounded-md font-display text-xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="mr-4 flex items-center gap-2 rounded-md font-display text-xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
+                        <ImagePlaceholder
+                            src="/images/logo.png"
+                            caption="ClassHub logo mark"
+                            alt=""
+                            aspect="1 / 1"
+                            compact
+                            priority
+                            className="h-8 w-8 shrink-0"
+                        />
                         ClassHub
                     </Link>
 
-                    <div className="hidden items-center gap-1 md:flex">{signedIn && memberLinks}</div>
+                    <div className="hidden items-center gap-1 md:flex">
+                        {signedIn && (
+                            <NavLink to="/courses" className={linkClass}>
+                                My courses
+                            </NavLink>
+                        )}
+                    </div>
 
                     <div className="ml-auto flex items-center gap-1">
-                        {signedIn && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="hidden h-11 gap-1 px-3 md:inline-flex">
-                                        <Plus className="h-4 w-4" aria-hidden="true" />
-                                        Add course
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem asChild>
-                                        <Link to="/creation">Create a course</Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                        <Link to="/join">Join a course</Link>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
-
                         <ThemeToggle />
 
                         {signedIn ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="hidden h-11 gap-1 px-3 md:inline-flex">
-                                        {firstName || "Account"}
+                                    <Button variant="outline" className="hidden h-11 gap-2 px-3 md:inline-flex">
+                                        <UserAvatar name={fullName} picture={user?.picture} className="h-7 w-7" />
+                                        {user?.firstName || "Account"}
                                         <ChevronDown className="h-4 w-4" aria-hidden="true" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={signOut}>
+                                    <DropdownMenuItem className="min-h-11" onSelect={signOut}>
                                         <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
                                         Sign out
                                     </DropdownMenuItem>
@@ -111,10 +103,10 @@ export function AppShell() {
                         ) : (
                             <div className="hidden items-center gap-1 md:flex">
                                 <Button asChild variant="ghost" className="h-11 px-4">
-                                    <Link to="/signup">Sign up</Link>
+                                    <Link to="/signin">Sign in</Link>
                                 </Button>
                                 <Button asChild className="h-11 px-4">
-                                    <Link to="/signing">Sign in</Link>
+                                    <Link to="/signup">Sign up</Link>
                                 </Button>
                             </div>
                         )}
@@ -137,18 +129,14 @@ export function AppShell() {
                     <SheetHeader>
                         <SheetTitle className="font-display">ClassHub</SheetTitle>
                         <SheetDescription>
-                            {signedIn ? `Signed in as ${firstName || "you"}` : "Sign in to see your courses"}
+                            {signedIn ? `Signed in as ${user?.firstName || "you"}` : "Sign in to see your courses"}
                         </SheetDescription>
                     </SheetHeader>
-                    <div className="mt-6 flex flex-col gap-1">
+                    <nav aria-label="Menu" className="mt-6 flex flex-col gap-1">
                         {signedIn ? (
                             <>
-                                {memberLinks}
-                                <NavLink to="/creation" className={linkClass} onClick={() => setMenuOpen(false)}>
-                                    Create a course
-                                </NavLink>
-                                <NavLink to="/join" className={linkClass} onClick={() => setMenuOpen(false)}>
-                                    Join a course
+                                <NavLink to="/courses" className={linkClass} onClick={() => setMenuOpen(false)}>
+                                    My courses
                                 </NavLink>
                                 <Separator className="my-3" />
                                 <Button variant="outline" className="h-11 justify-start" onClick={signOut}>
@@ -159,20 +147,25 @@ export function AppShell() {
                         ) : (
                             <>
                                 <Button asChild className="h-11" onClick={() => setMenuOpen(false)}>
-                                    <Link to="/signing">Sign in</Link>
+                                    <Link to="/signup">Sign up</Link>
                                 </Button>
                                 <Button asChild variant="outline" className="h-11" onClick={() => setMenuOpen(false)}>
-                                    <Link to="/signup">Sign up</Link>
+                                    <Link to="/signin">Sign in</Link>
                                 </Button>
                             </>
                         )}
-                    </div>
+                    </nav>
                 </SheetContent>
             </Sheet>
 
-            <main id="main" className="flex-1">
+            <main id="main" className="flex-1 scroll-mt-16">
                 <Outlet />
             </main>
+            <footer className="border-t py-6">
+                <p className="mx-auto w-full max-w-screen-xl px-4 text-sm text-muted-foreground sm:px-6 lg:px-8">
+                    &copy; {new Date().getFullYear()} ClassHub
+                </p>
+            </footer>
             <Toaster richColors />
         </div>
     );

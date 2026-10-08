@@ -113,10 +113,6 @@
     @apply font-display tracking-tight;
   }
 
-  .bg-surface-gradient {
-    background-image: var(--gradient-surface);
-  }
-
   @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after {
       animation-duration: 0.01ms !important;

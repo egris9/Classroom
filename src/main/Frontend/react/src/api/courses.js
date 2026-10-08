@@ -96,7 +96,7 @@ export const fetchFileContent = async (fileId) => {
     try {
         const response = await client.get(`/api/files/${fileId}/content`, { responseType: "blob" });
         return response.data;
-    } catch (error) {
+    } catch {
         throw new Error("Could not open the PDF.");
     }
 };
