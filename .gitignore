@@ -40,3 +40,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Eval inputs and outputs ###
+/eval/pdfs/
+/eval/out/
