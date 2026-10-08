@@ -46,8 +46,16 @@ export default function FileDropzone({ accept, maxBytes, file, onFile, label, hi
     const Icon = isImage ? ImageIcon : FileText;
 
     return (
-        <div className="space-y-2">
-            {label && <Label htmlFor={inputId}>{label}</Label>}
+        <div
+            className="space-y-2"
+            onDragOver={(event) => {
+                event.preventDefault();
+                setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+        >
+            {label &&<Label htmlFor={inputId}>{label}</Label>}
             {file ? (
                 <Card className="flex items-center gap-3 p-3">
                     <Icon className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -63,12 +71,6 @@ export default function FileDropzone({ accept, maxBytes, file, onFile, label, hi
             ) : (
                 <label
                     htmlFor={inputId}
-                    onDragOver={(event) => {
-                        event.preventDefault();
-                        setDragging(true);
-                    }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={onDrop}
                     className={cn(
                         "flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-input bg-muted/40 px-4 py-6 text-center transition-colors hover:bg-muted focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
                         dragging && "border-primary bg-muted",

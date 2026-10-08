@@ -98,7 +98,9 @@ public class CourseService {
         Course course = find(courseId);
         membership.requireTeacher(user, course);
         String oldKey = course.getPicturePath();
-        course.setPicturePath(materials.putPicture(upload));
+        String newKey = materials.putPicture(upload);
+        AfterCommit.onRollback(() -> materials.deletePicture(newKey));
+        course.setPicturePath(newKey);
         deleteAfterCommit(oldKey);
         return new CourseAccess(courseRepository.save(course), Role.TEACHER);
     }

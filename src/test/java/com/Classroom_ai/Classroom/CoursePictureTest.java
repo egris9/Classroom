@@ -4,6 +4,9 @@ import com.Classroom_ai.Classroom.auth.JwtTokenUtil;
 import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.auth.UserRepository;
 import com.Classroom_ai.Classroom.course.CourseRepository;
+import com.Classroom_ai.Classroom.course.CourseService;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,6 +54,8 @@ class CoursePictureTest {
     @Autowired CourseRepository courses;
     @Autowired BCryptPasswordEncoder encoder;
     @Autowired JwtTokenUtil jwt;
+    @Autowired CourseService courseService;
+    @Autowired PlatformTransactionManager txManager;
     @Value("${upload.dir}") String uploadDir;
 
     @Test
@@ -194,6 +200,29 @@ class CoursePictureTest {
                 .andExpect(status().isNoContent());
 
         assertFalse(Files.exists(file), "cover file should be deleted with the course");
+    }
+
+    @Test
+    void rolledBackCoverChangeLeavesNoOrphanFileAndKeepsTheOldCover() throws Exception {
+        User owner = newUser();
+        String teacher = bearer(owner);
+        long id = createCourse(teacher);
+        put(id, teacher, cover(PNG)).andExpect(status().isOk());
+        Path oldFile = coverFile(id);
+        Path pictures = oldFile.getParent();
+        long before = Files.list(pictures).count();
+
+        new TransactionTemplate(txManager).executeWithoutResult(status -> {
+            try {
+                courseService.setPicture(owner, id, cover(JPEG));
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+            status.setRollbackOnly();
+        });
+
+        assertEquals(before, Files.list(pictures).count(), "the new file should be removed on rollback");
+        assertTrue(Files.exists(oldFile), "the old cover must survive a rollback");
     }
 
     // --- helpers ---

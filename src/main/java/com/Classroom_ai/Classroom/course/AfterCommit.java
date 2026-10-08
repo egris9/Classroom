@@ -9,6 +9,18 @@ final class AfterCommit {
     private AfterCommit() {
     }
 
+    /** Work that undoes a side effect made during the transaction, such as a stored file, if the transaction rolls back. */
+    static void onRollback(Runnable work) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    work.run();
+                }
+            }
+        });
+    }
+
     static void run(Runnable work) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
