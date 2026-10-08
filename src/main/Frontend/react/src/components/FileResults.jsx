@@ -180,10 +180,10 @@ export function FileResults({ file, role }) {
                             <ol className="list-decimal space-y-3 pl-5 text-sm">
                                 {(set.exercises ?? []).map((exercise) => (
                                     <li key={exercise.question}>
-                                        <p>{exercise.question}</p>
+                                        <p dir="auto">{exercise.question}</p>
                                         <details className="text-muted-foreground">
                                             <summary className="min-h-11 cursor-pointer py-2">Show answer</summary>
-                                            <p>{exercise.answer}</p>
+                                            <p dir="auto">{exercise.answer}</p>
                                         </details>
                                     </li>
                                 ))}
