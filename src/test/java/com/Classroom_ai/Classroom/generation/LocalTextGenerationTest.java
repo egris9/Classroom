@@ -50,6 +50,14 @@ class LocalTextGenerationTest {
     }
 
     @Test
+    void summaryRequestAsksForOwnWordsAndNoEllipsis() {
+        adapter().summarize("Photosynthesis turns light into sugar.");
+
+        String system = server.requests().get(0).path("messages").path(0).path("content").asText();
+        assertThat(system).contains("in your own words").contains("Do not copy sentences").contains("no ellipses");
+    }
+
+    @Test
     void requests_switch_the_model_thinking_off() {
         adapter().summarize("Some text.");
 

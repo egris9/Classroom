@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Markdown } from "@/components/Markdown";
 import { StatusBadge } from "@/components/StatusBadge";
 import { listExerciseSets, listSummaries, requestExerciseSet, requestSummary } from "../api/generation.js";
 
@@ -22,6 +23,18 @@ function ResultBadge({ item }) {
         <StatusBadge status="success">Published</StatusBadge>
     ) : (
         <Badge variant="outline">Only you</Badge>
+    );
+}
+
+function DemoNotice({ item }) {
+    if (item.model !== "fake") {
+        return null;
+    }
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Demo output</Badge>
+            <span className="text-sm text-muted-foreground">No model is connected, so this only quotes the PDF.</span>
+        </div>
     );
 }
 
@@ -130,7 +143,8 @@ export function FileResults({ file, role }) {
                                 <span className="text-sm font-medium">Summary</span>
                                 <ResultBadge item={summary} />
                             </div>
-                            {summary.text && <p className="whitespace-pre-wrap text-sm">{summary.text}</p>}
+                            <DemoNotice item={summary} />
+                            {summary.text && <Markdown>{summary.text}</Markdown>}
                             <Failure item={summary} />
                         </CardContent>
                     </Card>
@@ -162,13 +176,14 @@ export function FileResults({ file, role }) {
                                 <span className="text-sm font-medium">Exercises</span>
                                 <ResultBadge item={set} />
                             </div>
+                            <DemoNotice item={set} />
                             <ol className="list-decimal space-y-3 pl-5 text-sm">
                                 {(set.exercises ?? []).map((exercise) => (
                                     <li key={exercise.question}>
-                                        <p>{exercise.question}</p>
+                                        <p dir="auto">{exercise.question}</p>
                                         <details className="text-muted-foreground">
                                             <summary className="min-h-11 cursor-pointer py-2">Show answer</summary>
-                                            <p>{exercise.answer}</p>
+                                            <p dir="auto">{exercise.answer}</p>
                                         </details>
                                     </li>
                                 ))}

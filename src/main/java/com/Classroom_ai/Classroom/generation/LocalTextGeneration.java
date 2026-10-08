@@ -32,17 +32,21 @@ public class LocalTextGeneration implements TextGeneration {
     private static final int MAX_ROUNDS = 5;
     static final int DEFAULT_MAX_CHUNKS = 40;
 
+    private static final String SUMMARY_FORMAT =
+            "Write the summary in your own words. Do not copy sentences from the text, and use no ellipses. "
+                    + "Start with an overview of one or two sentences, then give 4 to 8 bullet points with the key "
+                    + "points, and put the key terms in bold. Answer in the language of the text.";
     private static final String SUMMARISE =
-            "You summarise course material for students. Answer in the language of the text.";
+            "You summarise course material for students. " + SUMMARY_FORMAT;
     private static final String SUMMARISE_PART =
-            "You summarise one part of a longer course document. Keep the key points. Answer in the language of the text.";
+            "You summarise one part of a longer course document. Keep the key points. " + SUMMARY_FORMAT;
     private static final String EXERCISES =
             "You write exercises for students from course material. An exercise is an open question with a model "
                     + "answer. Write in the language of the text. Reply with only a JSON array of objects with the "
                     + "keys \"question\" and \"answer\".";
     private static final String COMBINE =
             "You are given summaries of consecutive parts of one course document. Write one summary of the whole "
-                    + "document. Answer in the language of the summaries.";
+                    + "document. " + SUMMARY_FORMAT;
 
     private final URI endpoint;
     private final String model;

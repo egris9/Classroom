@@ -70,6 +70,12 @@ public class GenerationService {
     /** Requests wait in memory, so any still PENDING after a restart will never run. */
     @EventListener(ApplicationReadyEvent.class)
     public void failInterrupted() {
+        if ("fake".equals(textGeneration.modelName())) {
+            log.warn("Text generation is running the demo adapter: summaries only quote the PDF. "
+                    + "Set GENERATION_ADAPTER=local, GENERATION_BASE_URL and GENERATION_MODEL to use a model.");
+        } else {
+            log.info("Text generation is using the model {}", textGeneration.modelName());
+        }
         failPending(summaries);
         failPending(exerciseSets);
     }
