@@ -10,5 +10,9 @@ const NEXT_STEPS = {
     CONNECTION_LOST: "Send your message again.",
 };
 
-/** What the person can do after an AI tools call failed with this API code. */
-export const nextStep = (code) => NEXT_STEPS[code] ?? "Try again.";
+/**
+ * What the person can do after an AI tools call failed with this API code. `spentTrial` says the failed call
+ * was a visitor's one free try, so trying again is not open to them.
+ */
+export const nextStep = (code, spentTrial = false) =>
+    spentTrial ? "That used your free try. Sign up to use the AI tools again." : (NEXT_STEPS[code] ?? "Try again.");

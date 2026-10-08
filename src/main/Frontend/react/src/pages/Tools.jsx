@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChatPanel from "@/components/ChatPanel";
 import PageContainer from "@/components/PageContainer";
@@ -6,7 +8,7 @@ import SignUpGate from "@/components/SignUpGate";
 import ToolsExercises from "@/components/ToolsExercises";
 import ToolsSummary from "@/components/ToolsSummary";
 import TrialBanner from "@/components/TrialBanner";
-import { isSignedIn } from "../api/auth.js";
+import { clearSession, getToken, isSignedIn } from "../api/auth.js";
 import { getTrial } from "../api/tools.js";
 
 // The backend's defaults: tools.anon.max-chars and tools.anon.max-pdf for a visitor, tools.max-chars and
@@ -19,17 +21,30 @@ const panelClass = "data-[state=inactive]:hidden";
 
 /** `/tools`: summaries, exercises and a chat for anyone. A visitor with no account gets one use, then the gate. */
 export default function Tools() {
+    const navigate = useNavigate();
     const [trial, setTrial] = useState(null);
     const [gateOpen, setGateOpen] = useState(false);
     const [tab, setTab] = useState("summary");
 
-    const refreshTrial = useCallback(() => {
-        getTrial()
-            .then(setTrial)
-            .catch(() => {
-                // Not knowing is fine: the backend still decides on each call.
-            });
-    }, []);
+    /** Resolves to what the backend answered, or to null when it could not be asked. */
+    const refreshTrial = useCallback(async () => {
+        let answer;
+        try {
+            answer = await getTrial();
+        } catch {
+            // Not knowing is fine: the backend still decides on each call.
+            return null;
+        }
+        if (!answer.signedIn && getToken()) {
+            // The token is no longer accepted and these routes never answer 401, so end the session here:
+            // otherwise the header says signed in while the tools treat the person as a visitor.
+            clearSession();
+            toast.info("Your session has ended. Sign in again to use your account.");
+            navigate("/tools", { replace: true });
+        }
+        setTrial(answer);
+        return answer;
+    }, [navigate]);
 
     useEffect(() => {
         refreshTrial();
@@ -40,7 +55,8 @@ export default function Tools() {
 
     /**
      * Runs one AI tools call. Resolves to `{ value }`, or to `{ gated: true }` when the visitor's free try is
-     * spent and the sign-up gate was opened instead. Any other failure is rethrown.
+     * spent and the sign-up gate was opened instead. Any other failure is rethrown, with `spentTrial` set when
+     * the call that failed was the visitor's free try.
      */
     const attempt = async (call) => {
         if (trial && !trial.signedIn && !trial.trialAvailable) {
@@ -48,16 +64,18 @@ export default function Tools() {
             return { gated: true };
         }
         try {
-            return { value: await call() };
+            const value = await call();
+            refreshTrial();
+            return { value };
         } catch (err) {
             if (err.code === "TRIAL_USED") {
                 setTrial({ signedIn: false, trialAvailable: false });
                 setGateOpen(true);
                 return { gated: true };
             }
+            const now = await refreshTrial();
+            err.spentTrial = Boolean(now && !now.signedIn && !now.trialAvailable);
             throw err;
-        } finally {
-            refreshTrial();
         }
     };
 

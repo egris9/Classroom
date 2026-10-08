@@ -117,7 +117,7 @@ export function ChatPanel({ attempt, active = true }) {
                     setMessages([...history, { role: "assistant", content: written }]);
                 }
             } else {
-                setError({ code: err.code ?? "REQUEST_FAILED", message: err.message });
+                setError({ code: err.code ?? "REQUEST_FAILED", message: err.message, spentTrial: err.spentTrial });
             }
         } finally {
             abortRef.current = null;
@@ -187,9 +187,9 @@ export function ChatPanel({ attempt, active = true }) {
                 <Alert variant="destructive">
                     <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
                         <span>
-                            {error.message} ({error.code}) {nextStep(error.code)}
+                            {error.message} ({error.code}) {nextStep(error.code, error.spentTrial)}
                         </span>
-                        {awaitingReply && (
+                        {awaitingReply && !error.spentTrial && (
                             <Button variant="outline" className="h-11 px-4" onClick={() => send(messages)}>
                                 Try again
                             </Button>

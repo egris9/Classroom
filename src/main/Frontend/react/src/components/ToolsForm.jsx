@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,7 @@ export function ToolsForm({ action, busyLabel, fromText, fromPdf, attempt, limit
     const [file, setFile] = useState(null);
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState(null);
+    const [error, setError] = useState(null);
 
     const tooLong = !file && text.length > limits.chars;
     const empty = !file && text.trim() === "";
@@ -28,13 +29,15 @@ export function ToolsForm({ action, busyLabel, fromText, fromPdf, attempt, limit
     const submit = async (event) => {
         event.preventDefault();
         setBusy(true);
+        setResult(null);
+        setError(null);
         try {
             const outcome = await attempt(() => (file ? fromPdf(file) : fromText(text)));
             if (!outcome.gated) {
                 setResult(outcome.value);
             }
         } catch (err) {
-            toast.error(err.message, { description: nextStep(err.code) });
+            setError(`${err.message} (${err.code}) ${nextStep(err.code, err.spentTrial)}`);
         } finally {
             setBusy(false);
         }
@@ -92,6 +95,11 @@ export function ToolsForm({ action, busyLabel, fromText, fromPdf, attempt, limit
                         </p>
                         <Skeleton className="h-40 w-full" />
                     </div>
+                )}
+                {!busy && error && (
+                    <Alert variant="destructive">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
                 )}
                 {!busy && result && children(result)}
             </div>
