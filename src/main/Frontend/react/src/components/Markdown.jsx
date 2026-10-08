@@ -13,9 +13,9 @@ function element(Tag, className, dir) {
 }
 
 const components = {
-    p: element("p", "text-sm", "auto"),
-    ul: element("ul", "list-inside list-disc space-y-2 text-sm"),
-    ol: element("ol", "list-inside list-decimal space-y-2 text-sm"),
+    p: element("p", "text-sm leading-reading", "auto"),
+    ul: element("ul", "list-inside list-disc space-y-2 text-sm leading-reading"),
+    ol: element("ol", "list-inside list-decimal space-y-2 text-sm leading-reading"),
     li: element("li", undefined, "auto"),
     strong: element("strong", "font-semibold"),
 };
