@@ -20,11 +20,9 @@ const UserCourses = () => {
                     setCreatedCourses(created);
                     setJoinedCourses(joined);
                 } else {
-                    console.error("Unexpected response format:", coursesData);
                     setError("Unexpected response format.");
                 }
-            } catch (error) {
-                console.error("Error fetching user courses:", error);
+            } catch {
                 setError("Failed to fetch courses. Please try again.");
             }
         };

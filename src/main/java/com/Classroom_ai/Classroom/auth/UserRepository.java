@@ -1,4 +1,4 @@
-package com.Classroom_ai.Classroom.User;
+package com.Classroom_ai.Classroom.auth;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

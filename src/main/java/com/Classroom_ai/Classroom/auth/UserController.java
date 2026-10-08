@@ -1,6 +1,5 @@
 package com.Classroom_ai.Classroom.auth;
 
-import com.Classroom_ai.Classroom.User.User;
 import com.Classroom_ai.Classroom.api.SigninRequest;
 import com.Classroom_ai.Classroom.api.SigninResponse;
 import com.Classroom_ai.Classroom.api.UserResponse;

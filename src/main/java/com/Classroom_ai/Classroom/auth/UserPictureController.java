@@ -1,6 +1,5 @@
 package com.Classroom_ai.Classroom.auth;
 
-import com.Classroom_ai.Classroom.User.User;
 import com.Classroom_ai.Classroom.material.Materials;
 import com.Classroom_ai.Classroom.material.StoredFileMissingException;
 import com.Classroom_ai.Classroom.material.StoredPicture;

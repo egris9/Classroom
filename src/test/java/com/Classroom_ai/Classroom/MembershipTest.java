@@ -1,7 +1,7 @@
 package com.Classroom_ai.Classroom;
 
-import com.Classroom_ai.Classroom.User.User;
-import com.Classroom_ai.Classroom.User.UserRepository;
+import com.Classroom_ai.Classroom.auth.User;
+import com.Classroom_ai.Classroom.auth.UserRepository;
 import com.Classroom_ai.Classroom.auth.JwtTokenUtil;
 import com.Classroom_ai.Classroom.course.CourseFile;
 import com.Classroom_ai.Classroom.course.CourseFileRepository;

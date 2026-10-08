@@ -58,6 +58,39 @@ export const uploadFile = async (courseId, file) => {
     }
 };
 
+export const deleteFile = async (fileId) => {
+    try {
+        await client.delete(`/api/files/${fileId}`);
+    } catch (error) {
+        throw new Error(messageOf(error, "Could not delete the PDF."));
+    }
+};
+
+export const deleteCourse = async (courseId) => {
+    try {
+        await client.delete(`/api/courses/${courseId}`);
+    } catch (error) {
+        throw new Error(messageOf(error, "Could not delete the course."));
+    }
+};
+
+export const leaveCourse = async (courseId) => {
+    try {
+        await client.delete(`/api/courses/${courseId}/membership`);
+    } catch (error) {
+        throw new Error(messageOf(error, "Could not leave the course."));
+    }
+};
+
+export const listStudents = async (courseId) => {
+    try {
+        const response = await client.get(`/api/courses/${courseId}/students`);
+        return response.data;
+    } catch (error) {
+        throw new Error(messageOf(error, "Could not load the students."));
+    }
+};
+
 /** Fetches a PDF through the client, so the token is sent, and returns it as a blob. */
 export const fetchFileContent = async (fileId) => {
     try {

@@ -157,6 +157,45 @@ class MaterialsTest {
         assertThrows(StoredFileMissingException.class, () -> materials.openPicture(stored.key()));
     }
 
+    // --- S6: deleting a course file removes its stored PDF, and only that ---
+
+    @Test
+    void delete_removesTheStoredPdf() throws Exception {
+        Materials materials = materialsAt(dir);
+        StoredFile stored = materials.put(new Course(), pdf("a.pdf"));
+        CourseFile row = new CourseFile();
+        row.setFilePath(stored.key());
+
+        materials.delete(row);
+
+        assertTrue(Files.notExists(dir.resolve(stored.key())));
+    }
+
+    @Test
+    void delete_ofAMissingFile_isQuiet() {
+        Materials materials = materialsAt(dir);
+        CourseFile row = new CourseFile();
+        row.setFilePath("files/00000000-0000-0000-0000-000000000000.pdf");
+
+        materials.delete(row);
+    }
+
+    @Test
+    void delete_neverTouchesAFileOutsideTheFilesFolder() throws Exception {
+        Materials materials = materialsAt(dir);
+        Path outside = Files.write(dir.resolve("outside.pdf"), PDF);
+        Path picture = Files.write(dir.resolve("pictures").resolve("x.png"), PNG);
+
+        for (String key : new String[]{outside.toString(), "files/../outside.pdf", "../outside.pdf", "pictures/x.png", "", null, "files/\0x"}) {
+            CourseFile row = new CourseFile();
+            row.setFilePath(key);
+            materials.delete(row);
+        }
+
+        assertTrue(Files.exists(outside));
+        assertTrue(Files.exists(picture));
+    }
+
     private static MockMultipartFile pdf(String name) {
         return new MockMultipartFile("file", name, "application/pdf", PDF);
     }

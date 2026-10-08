@@ -1,6 +1,6 @@
 package com.Classroom_ai.Classroom.generation;
 
-import com.Classroom_ai.Classroom.User.User;
+import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.course.CourseFile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Enumerated;
