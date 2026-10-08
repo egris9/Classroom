@@ -6,14 +6,21 @@ import com.Classroom_ai.Classroom.course.AlreadyTeacherException;
 import com.Classroom_ai.Classroom.course.CourseFileNotFoundException;
 import com.Classroom_ai.Classroom.course.CourseNameTakenException;
 import com.Classroom_ai.Classroom.course.CourseNotFoundException;
+import com.Classroom_ai.Classroom.generation.GenerationFailure;
 import com.Classroom_ai.Classroom.material.FileTooLargeException;
 import com.Classroom_ai.Classroom.material.StoredFileMissingException;
 import com.Classroom_ai.Classroom.material.UnsupportedFileTypeException;
 import com.Classroom_ai.Classroom.membership.ForbiddenException;
+import com.Classroom_ai.Classroom.tools.BadChatRequestException;
+import com.Classroom_ai.Classroom.tools.TextTooLongException;
+import com.Classroom_ai.Classroom.tools.TrialUsedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -44,9 +51,33 @@ public class ApiExceptionHandler {
         return respond(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "The request body is invalid.");
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestPartException.class})
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestPartException.class,
+            HttpMessageNotReadableException.class})
     public ResponseEntity<ErrorBody> badRequest(Exception e) {
         return respond(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "The request is malformed.");
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorBody> unsupportedContentType(HttpMediaTypeNotSupportedException e) {
+        return respond(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE",
+                "This address does not accept that kind of content.");
+    }
+
+    /** The code is the failure's own (NO_TEXT, MODEL_UNAVAILABLE, ...). A model that does not answer in time is a 504. */
+    @ExceptionHandler(GenerationFailure.class)
+    public ResponseEntity<ErrorBody> generationFailed(GenerationFailure e) {
+        HttpStatus status = "MODEL_TIMEOUT".equals(e.code()) ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.UNPROCESSABLE_ENTITY;
+        return respond(status, e.code(), e.getMessage());
+    }
+
+    @ExceptionHandler(BadChatRequestException.class)
+    public ResponseEntity<ErrorBody> badChat(BadChatRequestException e) {
+        return respond(HttpStatus.BAD_REQUEST, "BAD_REQUEST", e.getMessage());
+    }
+
+    @ExceptionHandler(TextTooLongException.class)
+    public ResponseEntity<ErrorBody> textTooLong(TextTooLongException e) {
+        return respond(HttpStatus.PAYLOAD_TOO_LARGE, "TEXT_TOO_LONG", e.getMessage());
     }
 
     @ExceptionHandler(ForbiddenException.class)
@@ -90,6 +121,11 @@ public class ApiExceptionHandler {
         return respond(HttpStatus.CONFLICT, "ALREADY_TEACHER", e.getMessage());
     }
 
+    @ExceptionHandler(TrialUsedException.class)
+    public ResponseEntity<ErrorBody> trialUsed(TrialUsedException e) {
+        return respond(HttpStatus.FORBIDDEN, "TRIAL_USED", e.getMessage());
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorBody> noRoute(NoResourceFoundException e) {
         return respond(HttpStatus.NOT_FOUND, "NOT_FOUND", "There is nothing at this address.");
@@ -106,7 +142,8 @@ public class ApiExceptionHandler {
         return respond(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error.");
     }
 
+    /** JSON whatever the caller accepts: a client waiting for an event stream must still be able to read a refusal. */
     private static ResponseEntity<ErrorBody> respond(HttpStatus status, String code, String message) {
-        return ResponseEntity.status(status).body(new ErrorBody(code, message));
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(new ErrorBody(code, message));
     }
 }

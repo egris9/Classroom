@@ -8,16 +8,25 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 /**
@@ -47,6 +56,22 @@ public class LocalTextGeneration implements TextGeneration {
     private static final String COMBINE =
             "You are given summaries of consecutive parts of one course document. Write one summary of the whole "
                     + "document. " + SUMMARY_FORMAT;
+    private static final String CHAT =
+            "You are a study assistant for course material. Answer briefly, in the language the user writes in. "
+                    + "If you do not know the answer, say that you do not know instead of inventing one.";
+    private static final String THINK_OPEN = "<think>";
+    private static final String THINK_CLOSE = "</think>";
+
+    /** Ends a streamed reply whose model has gone quiet: a request's timeout covers only the wait for its headers. */
+    private static final ScheduledThreadPoolExecutor WATCHDOG = new ScheduledThreadPoolExecutor(1, runnable -> {
+        Thread thread = new Thread(runnable, "generation-watchdog");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    static {
+        WATCHDOG.setRemoveOnCancelPolicy(true);
+    }
 
     private final URI endpoint;
     private final String model;
@@ -241,25 +266,23 @@ public class LocalTextGeneration implements TextGeneration {
         return Map.of("role", role, "content", content);
     }
 
-    private String chat(List<Map<String, String>> messages) {
-        String body;
+    private HttpRequest request(Map<String, Object> body) {
+        String json;
         try {
-            body = mapper.writeValueAsString(Map.of(
-                    "model", model,
-                    "messages", messages,
-                    "temperature", 0.2,
-                    "chat_template_kwargs", Map.of("enable_thinking", false)));
+            json = mapper.writeValueAsString(body);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
-        HttpRequest request = HttpRequest.newBuilder(endpoint)
+        return HttpRequest.newBuilder(endpoint)
                 .timeout(timeout)
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
-        HttpResponse<String> response;
+    }
+
+    private <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler) {
         try {
-            response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            return client.send(request, handler);
         } catch (HttpTimeoutException e) {
             throw new GenerationFailure("MODEL_TIMEOUT", "The model did not answer in time.", e);
         } catch (IOException e) {
@@ -268,6 +291,182 @@ public class LocalTextGeneration implements TextGeneration {
             Thread.currentThread().interrupt();
             throw new GenerationFailure("MODEL_UNAVAILABLE", "The request was interrupted.", e);
         }
+    }
+
+    @Override
+    public void chat(List<ChatMessage> history, Consumer<String> onDelta) {
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(message("system", CHAT));
+        for (ChatMessage turn : history) {
+            messages.add(message(turn.role(), turn.content()));
+        }
+        HttpRequest request = request(Map.of(
+                "model", model,
+                "messages", messages,
+                "stream", true,
+                "temperature", 0.3,
+                "chat_template_kwargs", Map.of("enable_thinking", false)));
+        HttpResponse<InputStream> response = send(request, HttpResponse.BodyHandlers.ofInputStream());
+        InputStream body = response.body();
+        try {
+            if (response.statusCode() != 200) {
+                throw new GenerationFailure("MODEL_ERROR", "The model server answered with status " + response.statusCode() + ".");
+            }
+            streamReply(body, onDelta);
+        } finally {
+            closeQuietly(body);
+        }
+    }
+
+    /**
+     * Reads the server-sent events of a streamed reply and hands the text to {@code onDelta}. The reply is complete
+     * at {@code [DONE]}, or at the end of a stream that has reported a finish reason; a stream that stops short of
+     * that, or goes quiet for longer than the timeout, is a failure.
+     */
+    private void streamReply(InputStream body, Consumer<String> onDelta) {
+        AtomicBoolean quiet = new AtomicBoolean();
+        Runnable giveUp = () -> {
+            quiet.set(true);
+            closeQuietly(body);
+        };
+        ScheduledFuture<?> watch = WATCHDOG.schedule(giveUp, timeout.toMillis(), TimeUnit.MILLISECONDS);
+        ReplyFilter reply = new ReplyFilter(onDelta);
+        boolean done = false;
+        boolean finishSeen = false;
+        try (BufferedReader lines = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
+            for (String line = lines.readLine(); line != null && !done; line = lines.readLine()) {
+                watch.cancel(false);
+                watch = WATCHDOG.schedule(giveUp, timeout.toMillis(), TimeUnit.MILLISECONDS);
+                if (!line.startsWith("data:")) {
+                    continue;
+                }
+                String data = line.substring("data:".length()).strip();
+                if (data.equals("[DONE]")) {
+                    done = true;
+                    continue;
+                }
+                JsonNode chunk = readChunk(data);
+                if (chunk.has("error")) {
+                    throw new GenerationFailure("MODEL_ERROR", "The model server reported an error while answering.");
+                }
+                JsonNode choice = chunk.path("choices").path(0);
+                finishSeen |= choice.path("finish_reason").isTextual();
+                JsonNode content = choice.path("delta").path("content");
+                if (content.isTextual()) {
+                    reply.accept(content.asText());
+                }
+            }
+        } catch (IOException e) {
+            if (quiet.get()) {
+                throw new GenerationFailure("MODEL_TIMEOUT", "The model stopped answering in time.", e);
+            }
+            throw new GenerationFailure("MODEL_UNAVAILABLE", "The connection to the model server was lost.", e);
+        } finally {
+            watch.cancel(false);
+        }
+        if (!done && !finishSeen) {
+            if (quiet.get()) {
+                throw new GenerationFailure("MODEL_TIMEOUT", "The model stopped answering in time.");
+            }
+            throw new GenerationFailure("MODEL_ERROR", "The model stopped before it finished its reply.");
+        }
+        reply.finish();
+    }
+
+    private JsonNode readChunk(String data) {
+        try {
+            return mapper.readTree(data);
+        } catch (JsonProcessingException e) {
+            throw new GenerationFailure("MODEL_ERROR", "The model server sent a reply that is not JSON.", e);
+        }
+    }
+
+    private static void closeQuietly(InputStream stream) {
+        try {
+            stream.close();
+        } catch (IOException e) {
+            // nothing left to read; the connection is gone either way
+        }
+    }
+
+    /**
+     * Turns the pieces a model streams into the pieces the caller gets: no {@code <think>} block (a tag may arrive
+     * split across pieces), no blank piece, and no whitespace before the first text or after the last. Whitespace
+     * between two pieces of text travels with the next piece, so the pieces joined are the reply, stripped.
+     */
+    private static final class ReplyFilter {
+
+        private final Consumer<String> out;
+        private final StringBuilder pending = new StringBuilder();
+        private final StringBuilder held = new StringBuilder();
+        private boolean thinking;
+        private boolean sent;
+
+        ReplyFilter(Consumer<String> out) {
+            this.out = out;
+        }
+
+        void accept(String piece) {
+            pending.append(piece);
+            while (true) {
+                String tag = thinking ? THINK_CLOSE : THINK_OPEN;
+                int at = pending.indexOf(tag);
+                if (at >= 0) {
+                    emitUnlessThinking(pending.substring(0, at));
+                    pending.delete(0, at + tag.length());
+                    thinking = !thinking;
+                    continue;
+                }
+                int settled = pending.length() - partialTagAtEnd(pending, tag);
+                emitUnlessThinking(pending.substring(0, settled));
+                pending.delete(0, settled);
+                return;
+            }
+        }
+
+        /** The stream is over: what was held back as a possible tag was text after all. A think block left open is cut off. */
+        void finish() {
+            emitUnlessThinking(pending.toString());
+            pending.setLength(0);
+            if (!sent) {
+                throw new GenerationFailure("BAD_OUTPUT", "The model returned an empty reply.");
+            }
+        }
+
+        private void emitUnlessThinking(String text) {
+            if (thinking) {
+                return;
+            }
+            String all = held + text;
+            String body = all.stripTrailing();
+            held.setLength(0);
+            held.append(all, body.length(), all.length());
+            if (!sent) {
+                body = body.stripLeading();
+            }
+            if (!body.isEmpty()) {
+                sent = true;
+                out.accept(body);
+            }
+        }
+
+        /** How many characters at the end of the text could be the start of the tag. */
+        private static int partialTagAtEnd(CharSequence text, String tag) {
+            for (int length = Math.min(tag.length() - 1, text.length()); length > 0; length--) {
+                if (tag.startsWith(text.subSequence(text.length() - length, text.length()).toString())) {
+                    return length;
+                }
+            }
+            return 0;
+        }
+    }
+
+    private String chat(List<Map<String, String>> messages) {
+        HttpResponse<String> response = send(request(Map.of(
+                "model", model,
+                "messages", messages,
+                "temperature", 0.2,
+                "chat_template_kwargs", Map.of("enable_thinking", false))), HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
             throw new GenerationFailure("MODEL_ERROR", "The model server answered with status " + response.statusCode() + ".");
         }

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /** Deterministic stand-in for a model: it quotes the text it is given. Selected by {@code generation.adapter=fake}. */
 @Component
@@ -28,6 +29,19 @@ public class FakeTextGeneration implements TextGeneration {
             exercises.add(new Exercise("Question " + (i + 1) + ": what does the course say about \"" + sentence + "\"?", sentence));
         }
         return exercises;
+    }
+
+    @Override
+    public void chat(List<ChatMessage> history, Consumer<String> onDelta) {
+        String question = history.stream()
+                .filter(message -> message.role().equals("user"))
+                .reduce((first, last) -> last)
+                .map(ChatMessage::content)
+                .orElse("");
+        String[] words = ("Demo reply (no model connected): " + question).strip().split("\\s+");
+        for (int i = 0; i < words.length; i++) {
+            onDelta.accept(i == 0 ? words[i] : " " + words[i]);
+        }
     }
 
     @Override
