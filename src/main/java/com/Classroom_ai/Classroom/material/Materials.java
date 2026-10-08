@@ -112,6 +112,17 @@ public class Materials {
         return new StoredPicture(resource, type.mediaType());
     }
 
+    /** Removes a stored picture. A picture that is already gone, or a key outside the pictures folder, is left alone. */
+    public void deletePicture(String key) {
+        try {
+            Files.deleteIfExists(resolve(picturesDir, key).getFile().toPath());
+        } catch (StoredFileMissingException e) {
+            log.debug("Nothing to delete for picture key");
+        } catch (IOException e) {
+            log.warn("Could not delete a stored picture", e);
+        }
+    }
+
     private void write(MultipartFile upload, String key) throws IOException {
         Path target = root.resolve(key);
         Files.createDirectories(target.getParent());

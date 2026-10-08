@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import FileDropzone from "@/components/FileDropzone";
 import PasswordInput from "@/components/PasswordInput";
 import { isSignedIn, signIn, signUp } from "../api/auth.js";
 
@@ -104,15 +105,15 @@ export default function SignUp() {
                                 required
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="profilePicture">Profile picture (optional)</Label>
-                            <Input
-                                id="profilePicture"
-                                type="file"
-                                accept="image/png,image/jpeg,image/gif,image/webp"
-                                onChange={(event) => setPicture(event.target.files[0] ?? null)}
-                            />
-                        </div>
+                        <FileDropzone
+                            id="profilePicture"
+                            label="Profile picture (optional)"
+                            accept="image/png,image/jpeg,image/gif,image/webp"
+                            maxBytes={2 * 1024 * 1024}
+                            hint="JPEG, PNG, GIF or WebP, up to 2 MB"
+                            file={picture}
+                            onFile={setPicture}
+                        />
                         {error && (
                             <Alert variant="destructive">
                                 <AlertDescription>{error}</AlertDescription>

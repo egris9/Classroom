@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createCourse } from "../api/courses.js";
+import FileDropzone from "@/components/FileDropzone";
+import { createCourse, setCoursePicture } from "../api/courses.js";
 
 function CreateCourseForm({ onDone }) {
     const navigate = useNavigate();
     const [values, setValues] = useState({ courseName: "", section: "", subject: "", room: "" });
+    const [cover, setCover] = useState(null);
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -22,6 +24,13 @@ function CreateCourseForm({ onDone }) {
         setSubmitting(true);
         try {
             const course = await createCourse({ ...values, room: parseInt(values.room, 10) });
+            if (cover) {
+                try {
+                    await setCoursePicture(course.id, cover);
+                } catch {
+                    toast.error("The course was created, but the picture could not be uploaded.");
+                }
+            }
             toast.success(`${course.courseName} created. Upload your first PDF next.`);
             onDone();
             navigate(`/courses/${course.id}`);
@@ -51,6 +60,15 @@ function CreateCourseForm({ onDone }) {
                 <Label htmlFor="course-room">Room</Label>
                 <Input id="course-room" name="room" type="number" min="1" value={values.room} onChange={change} required />
             </div>
+            <FileDropzone
+                id="course-cover"
+                label="Cover picture, optional"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                maxBytes={2 * 1024 * 1024}
+                hint="JPEG, PNG, GIF or WebP, up to 2 MB"
+                file={cover}
+                onFile={setCover}
+            />
             {error && (
                 <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>

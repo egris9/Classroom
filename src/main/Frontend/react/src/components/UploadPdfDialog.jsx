@@ -11,8 +11,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import FileDropzone from "@/components/FileDropzone";
 import { uploadFile } from "../api/courses.js";
 
 function UploadForm({ courseId, onUploaded }) {
@@ -36,16 +35,15 @@ function UploadForm({ courseId, onUploaded }) {
 
     return (
         <form onSubmit={submit} className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="pdf-file">PDF file</Label>
-                <Input
-                    id="pdf-file"
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(event) => setFile(event.target.files[0] ?? null)}
-                    required
-                />
-            </div>
+            <FileDropzone
+                id="pdf-file"
+                label="PDF file"
+                accept="application/pdf"
+                maxBytes={20 * 1024 * 1024}
+                hint="PDF, up to 20 MB"
+                file={file}
+                onFile={setFile}
+            />
             {error && (
                 <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>

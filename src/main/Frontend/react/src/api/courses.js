@@ -11,6 +11,25 @@ export const createCourse = async (courseData) => {
     }
 };
 
+export const setCoursePicture = async (courseId, file) => {
+    const formData = new FormData();
+    formData.append("picture", file);
+    try {
+        const response = await client.put(`/api/courses/${courseId}/picture`, formData);
+        return response.data;
+    } catch (error) {
+        throw new Error(messageOf(error, "Could not upload the cover picture."));
+    }
+};
+
+export const removeCoursePicture = async (courseId) => {
+    try {
+        await client.delete(`/api/courses/${courseId}/picture`);
+    } catch (error) {
+        throw new Error(messageOf(error, "Could not remove the cover picture."));
+    }
+};
+
 export const joinCourseByCode = async (accessCode) => {
     try {
         const response = await client.post("/api/courses/join", { accessCode });

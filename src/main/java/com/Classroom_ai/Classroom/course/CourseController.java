@@ -105,12 +105,13 @@ public class CourseController {
                 .body(pdf);
     }
 
-    private static CourseResponse respond(CourseAccess access) {
+    static CourseResponse respond(CourseAccess access) {
         Course course = access.course();
         User teacher = course.getTeacher();
         return new CourseResponse(course.getId(), course.getCourseName(), course.getSection(), course.getSubject(),
                 course.getRoom(), new CourseResponse.TeacherResponse(teacher.getId(), teacher.getFirstName(), UserResponse.pictureUrl(teacher)),
-                access.role(), access.role() == Role.TEACHER ? course.getAccessCode() : null);
+                access.role(), access.role() == Role.TEACHER ? course.getAccessCode() : null,
+                course.getPicturePath() == null ? null : "/api/courses/" + course.getId() + "/picture");
     }
 
     private static FileResponse respond(CourseFile file) {

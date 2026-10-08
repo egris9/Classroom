@@ -1,10 +1,79 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { deleteCourse, leaveCourse } from "../api/courses.js";
+import { Button } from "@/components/ui/button";
+import { deleteCourse, leaveCourse, removeCoursePicture, setCoursePicture } from "../api/courses.js";
 import ConfirmAction from "./ConfirmAction.jsx";
+import CourseCover from "./CourseCover.jsx";
+import FileDropzone from "./FileDropzone.jsx";
+
+/** Teacher only: shows the current cover, replaces it with a new picture, or removes it. */
+function CoverSection({ course, onCourseChange }) {
+    const [file, setFile] = useState(null);
+    const [saving, setSaving] = useState(false);
+
+    const save = async () => {
+        setSaving(true);
+        try {
+            const updated = await setCoursePicture(course.id, file);
+            onCourseChange({ ...course, ...updated, pictureVersion: Date.now() });
+            setFile(null);
+            toast.success("Cover picture saved.");
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const remove = async () => {
+        try {
+            await removeCoursePicture(course.id);
+            onCourseChange({ ...course, picture: null, pictureVersion: undefined });
+            toast.success("Cover picture removed.");
+        } catch (err) {
+            toast.error(err.message);
+        }
+    };
+
+    return (
+        <section aria-labelledby="settings-cover" className="space-y-3">
+            <h2 id="settings-cover" className="text-lg font-semibold">
+                Cover picture
+            </h2>
+            <CourseCover course={course} aspect="aspect-[3/1]" className="max-w-xl rounded-lg border" />
+            <div className="max-w-xl space-y-3">
+                <FileDropzone
+                    id="settings-cover-file"
+                    label={course.picture ? "Replace the picture" : "Add a picture"}
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    maxBytes={2 * 1024 * 1024}
+                    hint="JPEG, PNG, GIF or WebP, up to 2 MB"
+                    file={file}
+                    onFile={setFile}
+                />
+                <div className="flex flex-wrap gap-2">
+                    <Button type="button" className="h-11" disabled={!file || saving} onClick={save}>
+                        {saving ? "Saving..." : "Save picture"}
+                    </Button>
+                    {course.picture && (
+                        <ConfirmAction
+                            label="Remove picture"
+                            size="default"
+                            title="Remove the cover picture?"
+                            description="The course goes back to a coloured cover."
+                            confirmLabel="Remove picture"
+                            onConfirm={remove}
+                        />
+                    )}
+                </div>
+            </div>
+        </section>
+    );
+}
 
 /** The details of a course, and the one destructive action each role has. */
-export function CourseSettings({ course }) {
+export function CourseSettings({ course, onCourseChange }) {
     const navigate = useNavigate();
 
     const finish = async (action, done) => {
@@ -38,6 +107,8 @@ export function CourseSettings({ course }) {
                     </div>
                 </dl>
             </section>
+
+            {course.role === "TEACHER" && <CoverSection course={course} onCourseChange={onCourseChange} />}
 
             <section aria-labelledby="settings-danger" className="space-y-3">
                 <h2 id="settings-danger" className="text-lg font-semibold">
