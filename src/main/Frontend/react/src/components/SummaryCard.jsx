@@ -10,7 +10,7 @@ export function DemoNotice({ item }) {
     return (
         <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">Demo output</Badge>
-            <span className="text-sm text-muted-foreground">No model is connected, so this only quotes the PDF.</span>
+            <span className="text-sm text-muted-foreground">No model is connected, so this only quotes its source.</span>
         </div>
     );
 }

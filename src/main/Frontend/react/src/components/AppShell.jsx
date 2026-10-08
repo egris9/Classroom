@@ -79,6 +79,9 @@ export function AppShell() {
                                 My courses
                             </NavLink>
                         )}
+                        <NavLink to="/tools" className={linkClass}>
+                            AI tools
+                        </NavLink>
                     </div>
 
                     <div className="ml-auto flex items-center gap-1">
@@ -138,6 +141,9 @@ export function AppShell() {
                                 <NavLink to="/courses" className={linkClass} onClick={() => setMenuOpen(false)}>
                                     My courses
                                 </NavLink>
+                                <NavLink to="/tools" className={linkClass} onClick={() => setMenuOpen(false)}>
+                                    AI tools
+                                </NavLink>
                                 <Separator className="my-3" />
                                 <Button variant="outline" className="h-11 justify-start" onClick={signOut}>
                                     <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -146,6 +152,10 @@ export function AppShell() {
                             </>
                         ) : (
                             <>
+                                <NavLink to="/tools" className={linkClass} onClick={() => setMenuOpen(false)}>
+                                    AI tools
+                                </NavLink>
+                                <Separator className="my-3" />
                                 <Button asChild className="h-11" onClick={() => setMenuOpen(false)}>
                                     <Link to="/signup">Sign up</Link>
                                 </Button>

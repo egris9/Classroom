@@ -12,6 +12,7 @@ import MyCourses from "./pages/MyCourses.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
+import Tools from "./pages/Tools.jsx";
 
 const root = document.getElementById("root");
 
@@ -24,6 +25,7 @@ ReactDOM.createRoot(root).render(
                         <Route path="/" element={<Home />} />
                         <Route path="/signin" element={<SignIn />} />
                         <Route path="/signup" element={<SignUp />} />
+                        <Route path="/tools" element={<Tools />} />
                         <Route element={<RequireAuth />}>
                             <Route path="/courses" element={<MyCourses />} />
                             <Route path="/courses/:courseId" element={<CoursePage />} />
