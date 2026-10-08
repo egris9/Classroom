@@ -7,6 +7,8 @@ target/
 /docs/IMPLEMENTATION_PLAN.md
 /docs/PROBLEMS_AND_CONTEXT.md
 /docs/human-ai-plan.md
+/docs/IMPLEMENTATION_PLAN_V2.md
+/.playwright-mcp/
 /CONTEXT.md
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

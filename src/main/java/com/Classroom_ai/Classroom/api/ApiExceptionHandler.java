@@ -14,11 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /** The one place that maps exception types to a status and a {code, message} body. */
@@ -86,6 +88,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(AlreadyTeacherException.class)
     public ResponseEntity<ErrorBody> alreadyTeacher(AlreadyTeacherException e) {
         return respond(HttpStatus.CONFLICT, "ALREADY_TEACHER", e.getMessage());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorBody> noRoute(NoResourceFoundException e) {
+        return respond(HttpStatus.NOT_FOUND, "NOT_FOUND", "There is nothing at this address.");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorBody> methodNotAllowed(HttpRequestMethodNotSupportedException e) {
+        return respond(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "This address does not accept that method.");
     }
 
     @ExceptionHandler(Exception.class)

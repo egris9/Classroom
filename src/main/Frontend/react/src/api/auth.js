@@ -1,17 +1,24 @@
 import client from "./client.js";
 
 const TOKEN_KEY = "jwt_token";
-const FIRST_NAME_KEY = "user_firstname";
+const USER_KEY = "user";
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 
-export const getFirstName = () => localStorage.getItem(FIRST_NAME_KEY);
+/** The signed-in user as the signin response returned it: id, firstName, lastName, email, picture. */
+export const getUser = () => {
+    try {
+        return JSON.parse(localStorage.getItem(USER_KEY));
+    } catch {
+        return null;
+    }
+};
 
 export const isSignedIn = () => Boolean(getToken());
 
 export const clearSession = () => {
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(FIRST_NAME_KEY);
+    localStorage.removeItem(USER_KEY);
 };
 
 export const signUp = async (formData) => {
@@ -19,9 +26,9 @@ export const signUp = async (formData) => {
     return response.data;
 };
 
-export const signInn = async (email, password) => {
+export const signIn = async (email, password) => {
     const response = await client.post("/api/auth/signin", { email, password });
     localStorage.setItem(TOKEN_KEY, response.data.token);
-    localStorage.setItem(FIRST_NAME_KEY, response.data.user.firstName);
+    localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
     return response.data.user;
 };

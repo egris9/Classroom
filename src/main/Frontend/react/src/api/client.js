@@ -19,7 +19,7 @@ client.interceptors.response.use(
         const url = error.config?.url ?? "";
         if (error.response?.status === 401 && !url.startsWith("/api/auth/")) {
             clearSession();
-            window.location.assign("/signing");
+            window.location.assign("/signin");
         }
         return Promise.reject(error);
     }

@@ -1,11 +1,9 @@
-import withMT from "@material-tailwind/react/utils/withMT"
 import animate from "tailwindcss-animate"
 
 /** @type {import('tailwindcss').Config} */
-export default withMT({
+export default {
   darkMode: ["class"],
-  content: ["./index.html", "./src/**/*.{js,jsx,css}","./node_modules/@material-tailwind/react/components/**/*.{js,jsx}",
-    "./node_modules/@material-tailwind/react/theme/components/**/*.{js,jsx}",],
+  content: ["./index.html", "./src/**/*.{js,jsx,css}"],
   theme: {
     extend: {
       fontFamily: {
@@ -63,4 +61,4 @@ export default withMT({
     },
   },
   plugins: [animate],
-});
+};

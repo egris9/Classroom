@@ -3,7 +3,7 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
-const BASELINE = 24;
+const BASELINE = 0;
 
 const eslint = path.resolve(import.meta.dirname, "../node_modules/eslint/bin/eslint.js");
 const run = spawnSync(process.execPath, [eslint, ".", "-f", "json"], {
