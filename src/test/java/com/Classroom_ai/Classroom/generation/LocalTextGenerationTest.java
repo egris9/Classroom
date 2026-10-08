@@ -280,6 +280,87 @@ class LocalTextGenerationTest {
         assertThat(server.requests().size()).isGreaterThan(1).isLessThanOrEqualTo(5);
     }
 
+    // --- review fixes ---
+
+    @Test
+    void a_chunk_size_below_one_is_refused_at_construction() {
+        for (int bad : new int[]{0, -5}) {
+            assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), bad))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("generation.chunk-chars");
+        }
+    }
+
+    @Test
+    void a_missing_or_non_positive_timeout_is_refused_at_construction() {
+        for (Duration bad : new Duration[]{null, Duration.ZERO, Duration.ofSeconds(-1)}) {
+            assertThatThrownBy(() -> adapter(server.baseUrl(), bad, 10_000))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("generation.timeout");
+        }
+    }
+
+    @Test
+    void text_needing_more_chunks_than_the_limit_fails_with_TOO_LONG_before_any_request() {
+        LocalTextGeneration limited = new LocalTextGeneration(server.baseUrl(), MODEL, Duration.ofSeconds(5), 100, 3,
+                new ObjectMapper());
+        String text = words(200);
+
+        assertThatThrownBy(() -> limited.summarize(text))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
+        assertThatThrownBy(() -> limited.generateExercises(text, 5))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
+        assertThat(server.requests()).isEmpty();
+    }
+
+    @Test
+    void a_reply_that_is_only_a_think_block_is_BAD_OUTPUT_not_a_blank_summary() {
+        server.replyWith(user -> "<think>nothing else</think>");
+
+        assertThatThrownBy(() -> adapter().summarize("Some text."))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
+    }
+
+    @Test
+    void a_blank_chunk_summary_does_not_reach_the_combining_request() {
+        server.replyWith(user -> "  ");
+
+        assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60)))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
+        assertThat(server.requests()).hasSize(1);
+    }
+
+    @Test
+    void an_unterminated_think_block_is_cut_off_and_never_stored() {
+        server.replyWith(user -> "The summary.\n<think>reasoning that never ends");
+
+        assertThat(adapter().summarize("Some text.")).isEqualTo("The summary.");
+    }
+
+    @Test
+    void a_reply_that_is_only_an_unterminated_think_block_is_BAD_OUTPUT() {
+        server.replyWith(user -> "<think>reasoning that never ends");
+
+        assertThatThrownBy(() -> adapter().summarize("Some text."))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
+    }
+
+    @Test
+    void prose_with_brackets_before_the_array_does_not_hide_it() {
+        server.replyWith(user -> "Here are 5 [easy] exercises: " + exercisesJson(5));
+
+        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(server.requests()).hasSize(1);
+    }
+
+    @Test
+    void a_reference_after_the_array_does_not_hide_it() {
+        server.replyWith(user -> exercisesJson(5) + "\n\nSee [1] for details.");
+
+        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(server.requests()).hasSize(1);
+    }
+
     @Test
     void a_blank_base_url_is_refused_at_construction() {
         assertThatThrownBy(() -> adapter(" ", Duration.ofSeconds(5), 10_000))
