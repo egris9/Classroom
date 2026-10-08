@@ -63,7 +63,7 @@ class EvalRunnerTest {
         assertThat(result.exercisesStatus()).isEqualTo("DONE");
         assertThat(result.textChars()).isGreaterThan(0);
         assertThat(result.summaryMillis()).isGreaterThanOrEqualTo(0);
-        assertThat(Files.readString(out().resolve("biology.summary.txt"))).startsWith("Summary: ");
+        assertThat(Files.readString(out().resolve("biology.summary.txt"))).startsWith("Demo summary (no model connected): ");
         assertThat(Files.readString(out().resolve("biology.exercises.json"))).contains("\"question\"").contains("\"answer\"");
     }
 

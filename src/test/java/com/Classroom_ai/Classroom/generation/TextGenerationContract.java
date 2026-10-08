@@ -46,6 +46,23 @@ abstract class TextGenerationContract {
         assertThat(adapter().summarize(text).length()).isLessThan(text.length());
     }
 
+    /** The demo adapter quotes its source on purpose and says so; every real adapter must not. */
+    boolean quotesItsSource() {
+        return false;
+    }
+
+    @Test
+    void summaryIsNotAQuoteOfTheStart() {
+        String text = lesson(3000);
+
+        String summary = adapter().summarize(text);
+
+        if (!quotesItsSource()) {
+            assertThat(summary).doesNotContain(text.substring(0, 80));
+        }
+        assertThat(summary.stripTrailing()).doesNotEndWith("...").doesNotEndWith("…");
+    }
+
     @Test
     void a_text_longer_than_one_chunk_still_gets_a_summary() {
         String text = lesson(25_000);

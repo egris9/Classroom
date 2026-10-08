@@ -11,12 +11,12 @@ import java.util.List;
 @ConditionalOnProperty(name = "generation.adapter", havingValue = "fake", matchIfMissing = true)
 public class FakeTextGeneration implements TextGeneration {
 
-    private static final int SUMMARY_LENGTH = 200;
+    private static final int SUMMARY_LENGTH = 120;
 
     @Override
     public String summarize(String text) {
         String flat = text.replaceAll("\s+", " ").strip();
-        return "Summary: " + (flat.length() > SUMMARY_LENGTH ? flat.substring(0, SUMMARY_LENGTH) + "..." : flat);
+        return "Demo summary (no model connected): " + (flat.length() > SUMMARY_LENGTH ? flat.substring(0, SUMMARY_LENGTH).strip() : flat);
     }
 
     @Override
