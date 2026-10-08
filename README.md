@@ -38,6 +38,8 @@ The backend reads environment variables, and also a `.env` file in the repo root
 | `TOOLS_ANON_MAX_CHARS` | `20000` | Longest text a visitor with no account can send to the AI tools. A PDF is held to the same limit on its extracted text. |
 | `TOOLS_ANON_MAX_PDF` | `5MB` | Largest PDF a visitor with no account can send to the AI tools |
 | `TOOLS_MAX_CHARS` | `100000` | The same limit for a signed-in user (their PDF size limit is `UPLOAD_MAX_SIZE`) |
+| `TOOLS_CHAT_MAX_MESSAGES` | `20` | Most messages in one chat. The client sends the whole conversation each time. |
+| `TOOLS_CHAT_MAX_MESSAGE_CHARS` | `4000` | Longest single chat message |
 | `TOOLS_TRIAL_TRUST_FORWARDED` | `false` | Set `true` only behind a proxy you run that sets `X-Forwarded-For`. Otherwise the header is ignored, because any caller can forge it. |
 
 The frontend reads one variable at build time: `VITE_API_URL`, the backend url (default `http://localhost:8080`). The backend allows the origin `http://localhost:5175` only, which is the port the dev server uses.

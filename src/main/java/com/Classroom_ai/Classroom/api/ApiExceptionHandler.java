@@ -11,11 +11,13 @@ import com.Classroom_ai.Classroom.material.FileTooLargeException;
 import com.Classroom_ai.Classroom.material.StoredFileMissingException;
 import com.Classroom_ai.Classroom.material.UnsupportedFileTypeException;
 import com.Classroom_ai.Classroom.membership.ForbiddenException;
+import com.Classroom_ai.Classroom.tools.BadChatRequestException;
 import com.Classroom_ai.Classroom.tools.TextTooLongException;
 import com.Classroom_ai.Classroom.tools.TrialUsedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -66,6 +68,11 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorBody> generationFailed(GenerationFailure e) {
         HttpStatus status = "MODEL_TIMEOUT".equals(e.code()) ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.UNPROCESSABLE_ENTITY;
         return respond(status, e.code(), e.getMessage());
+    }
+
+    @ExceptionHandler(BadChatRequestException.class)
+    public ResponseEntity<ErrorBody> badChat(BadChatRequestException e) {
+        return respond(HttpStatus.BAD_REQUEST, "BAD_REQUEST", e.getMessage());
     }
 
     @ExceptionHandler(TextTooLongException.class)
@@ -135,7 +142,8 @@ public class ApiExceptionHandler {
         return respond(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error.");
     }
 
+    /** JSON whatever the caller accepts: a client waiting for an event stream must still be able to read a refusal. */
     private static ResponseEntity<ErrorBody> respond(HttpStatus status, String code, String message) {
-        return ResponseEntity.status(status).body(new ErrorBody(code, message));
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(new ErrorBody(code, message));
     }
 }
