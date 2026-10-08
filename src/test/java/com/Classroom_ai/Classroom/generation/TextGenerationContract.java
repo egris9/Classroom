@@ -2,6 +2,7 @@ package com.Classroom_ai.Classroom.generation;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,5 +95,16 @@ abstract class TextGenerationContract {
     @Test
     void a_smaller_count_gives_a_smaller_set() {
         assertThat(adapter().generateExercises(lesson(1200), 2)).hasSize(2);
+    }
+
+    @Test
+    void chatStreamsNonEmptyDeltasThatJoinIntoTheReply() {
+        List<String> deltas = new ArrayList<>();
+
+        adapter().chat(List.of(new ChatMessage("user", "What is photosynthesis?")), deltas::add);
+
+        assertThat(deltas).isNotEmpty();
+        assertThat(deltas).noneMatch(String::isBlank);
+        assertThat(String.join("", deltas)).isNotBlank();
     }
 }

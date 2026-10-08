@@ -2,6 +2,7 @@ package com.Classroom_ai.Classroom.generation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -374,5 +377,139 @@ class LocalTextGenerationTest {
         assertThatThrownBy(() -> adapter(" ", Duration.ofSeconds(5), 10_000))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("generation.base-url");
+    }
+
+    // --- chat ---
+
+    private List<String> chatDeltas(LocalTextGeneration adapter, String question) {
+        List<String> deltas = new ArrayList<>();
+        adapter.chat(List.of(new ChatMessage("user", question)), deltas::add);
+        return deltas;
+    }
+
+    private static void assertFailsWith(String code, ThrowingCallable call) {
+        assertThatThrownBy(call)
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo(code));
+    }
+
+    @Test
+    void chatRequestSetsStreamTrueAndFixedSystemPrompt() {
+        adapter().chat(List.of(
+                new ChatMessage("user", "What is a chloroplast?"),
+                new ChatMessage("assistant", "A plant organelle."),
+                new ChatMessage("user", "What does it do?")), delta -> { });
+
+        JsonNode request = server.requests().get(0);
+        assertThat(request.path("stream").asBoolean(false)).isTrue();
+        assertThat(request.path("model").asText()).isEqualTo(MODEL);
+        assertThat(request.path("chat_template_kwargs").path("enable_thinking").asBoolean(true)).isFalse();
+        JsonNode messages = request.path("messages");
+        assertThat(messages).hasSize(4);
+        assertThat(messages.get(0).path("role").asText()).isEqualTo("system");
+        assertThat(messages.get(0).path("content").asText())
+                .contains("study assistant").contains("language").contains("do not know");
+        assertThat(messages.get(1).path("role").asText()).isEqualTo("user");
+        assertThat(messages.get(1).path("content").asText()).isEqualTo("What is a chloroplast?");
+        assertThat(messages.get(2).path("role").asText()).isEqualTo("assistant");
+        assertThat(messages.get(2).path("content").asText()).isEqualTo("A plant organelle.");
+        assertThat(messages.get(3).path("role").asText()).isEqualTo("user");
+        assertThat(messages.get(3).path("content").asText()).isEqualTo("What does it do?");
+    }
+
+    @Test
+    void chatPassesDeltasInOrder() {
+        server.streamsChunks("Chloro", "plasts", " make", " sugar.");
+
+        assertThat(chatDeltas(adapter(), "What do chloroplasts do?"))
+                .containsExactly("Chloro", "plasts", " make", " sugar.");
+    }
+
+    @Test
+    void chatStripsThinkBlocks() {
+        server.streamsChunks("<think>The user wants", " the answer.</think>", "\n\n", "Sugar.");
+
+        assertThat(chatDeltas(adapter(), "What do chloroplasts make?")).containsExactly("Sugar.");
+    }
+
+    @Test
+    void chatStripsAThinkTagSplitAcrossChunks() {
+        server.streamsChunks("Before.\n", "<thi", "nk>hidden</th", "ink>\nAfter.");
+
+        assertThat(String.join("", chatDeltas(adapter(), "Go on."))).isEqualTo("Before.\n\nAfter.");
+    }
+
+    @Test
+    void chatNeverSendsAWhitespaceOnlyDelta() {
+        server.streamsChunks("\n\n", "Hello", "\n\n", "world", " ");
+
+        assertThat(chatDeltas(adapter(), "Hi")).containsExactly("Hello", "\n\nworld");
+    }
+
+    @Test
+    void chatReplyThatIsOnlyAThinkBlockFailsWithBadOutput() {
+        server.streamsChunks("<think>nothing", " else</think>");
+
+        assertFailsWith("BAD_OUTPUT", () -> chatDeltas(adapter(), "Hi"));
+    }
+
+    @Test
+    void chatFailsWithModelUnavailableWhenServerIsDown() throws IOException {
+        int closedPort;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            closedPort = socket.getLocalPort();
+        }
+        LocalTextGeneration down = adapter("http://127.0.0.1:" + closedPort, Duration.ofSeconds(5), 10_000);
+
+        assertFailsWith("MODEL_UNAVAILABLE", () -> chatDeltas(down, "Hi"));
+    }
+
+    @Test
+    void chatErrorStatusFailsWithModelError() {
+        server.failWith(500);
+
+        assertFailsWith("MODEL_ERROR", () -> chatDeltas(adapter(), "Hi"));
+    }
+
+    @Test
+    void chatChunkThatReportsAnErrorFailsWithModelError() {
+        server.streamsData("{\"error\":{\"message\":\"boom\"}}");
+
+        assertFailsWith("MODEL_ERROR", () -> chatDeltas(adapter(), "Hi"));
+    }
+
+    @Test
+    void chatThatEndsBeforeTheModelFinishesFailsWithModelErrorAfterTheTextSoFar() {
+        server.streamsChunks("Partial ").cutsStreamShort(0);
+        List<String> deltas = new ArrayList<>();
+
+        assertFailsWith("MODEL_ERROR",
+                () -> adapter().chat(List.of(new ChatMessage("user", "Hi")), deltas::add));
+        assertThat(deltas).containsExactly("Partial");
+    }
+
+    @Test
+    void chatThatStallsMidStreamFailsWithModelTimeoutInsteadOfHoldingTheCallerForever() {
+        server.streamsChunks("Partial").cutsStreamShort(5000);
+        LocalTextGeneration impatient = adapter(server.baseUrl(), Duration.ofMillis(400), 10_000);
+        long start = System.nanoTime();
+
+        assertFailsWith("MODEL_TIMEOUT", () -> chatDeltas(impatient, "Hi"));
+
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
+    }
+
+    @Test
+    void chatStopsReadingWhenTheConsumerThrows() {
+        server.streamsChunks("a", "b", "c");
+        List<String> seen = new ArrayList<>();
+        RuntimeException clientGone = new RuntimeException("client gone");
+
+        assertThatThrownBy(() -> adapter().chat(List.of(new ChatMessage("user", "Hi")), delta -> {
+            seen.add(delta);
+            if (delta.equals("b")) {
+                throw clientGone;
+            }
+        })).isSameAs(clientGone);
+        assertThat(seen).containsExactly("a", "b");
     }
 }
