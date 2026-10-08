@@ -2,7 +2,7 @@
 
 A small web app for courses. A **Teacher** creates a course, uploads PDFs and shares an 8-character access code. **Students** join with the code, read the PDFs and ask a language model for a summary or, for the Teacher, a set of exercises. A Teacher's results are published to the course; a Student's stay private to that Student.
 
-Terms (Teacher, Student, Membership, CourseFile, Summary, Exercise set) are defined in [CONTEXT.md](CONTEXT.md).
+Roles belong to one course, not to an account: whoever creates a course is its Teacher, and whoever joins it with the code is a Student in that course only. A **Summary** is generated text about one PDF; an **Exercise set** is 5 generated questions with model answers for one PDF.
 
 - Backend: Spring Boot 3, Java 21, MySQL, in `src/main/java`.
 - Frontend: React, Vite and Tailwind, in `src/main/Frontend/react`.
@@ -83,8 +83,3 @@ npm --prefix src/main/Frontend/react run lint
 ```
 
 The backend tests use an in-memory H2 database, so they need no MySQL. GitHub Actions runs the same checks on every push.
-
-## More
-
-- [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md): the refactor, slice by slice, with notes on each.
-- [docs/PROBLEMS_AND_CONTEXT.md](docs/PROBLEMS_AND_CONTEXT.md): why things are the way they are.
