@@ -63,13 +63,18 @@ public class Materials {
         if (upload.getSize() > maxFileBytes) {
             throw new FileTooLargeException("The file is larger than " + DataSize.ofBytes(maxFileBytes).toMegabytes() + "MB.");
         }
-        if (!Arrays.equals(head(upload, PDF_MAGIC.length), PDF_MAGIC)) {
-            throw new UnsupportedFileTypeException("Only PDF files are accepted.");
-        }
+        requirePdf(upload);
         String key = "files/" + UUID.randomUUID() + ".pdf";
         write(upload, key);
         log.debug("Stored {} for course {}", key, course.getId());
         return new StoredFile(key, displayName(upload.getOriginalFilename()));
+    }
+
+    /** Throws 415 unless the upload starts with {@code %PDF-}, whatever its name or declared type says. */
+    public void requirePdf(MultipartFile upload) throws IOException {
+        if (!Arrays.equals(head(upload, PDF_MAGIC.length), PDF_MAGIC)) {
+            throw new UnsupportedFileTypeException("Only PDF files are accepted.");
+        }
     }
 
     /** The stored PDF of a course file. */

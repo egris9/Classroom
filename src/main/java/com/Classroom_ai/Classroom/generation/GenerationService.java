@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -21,10 +22,17 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Requests a Summary or an Exercise set for a CourseFile and runs it in the background. A request is stored as
@@ -34,7 +42,7 @@ import java.util.function.Consumer;
 @Service
 public class GenerationService {
 
-    static final int EXERCISES_PER_SET = 5;
+    public static final int EXERCISES_PER_SET = 5;
 
     private static final Logger log = LoggerFactory.getLogger(GenerationService.class);
     private static final TypeReference<List<Exercise>> EXERCISE_LIST = new TypeReference<>() {
@@ -48,6 +56,7 @@ public class GenerationService {
     private final PdfText pdfText;
     private final TextGeneration textGeneration;
     private final ObjectMapper mapper;
+    private final Duration timeout;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "generation");
         thread.setDaemon(true);
@@ -56,7 +65,9 @@ public class GenerationService {
 
     public GenerationService(SummaryRepository summaries, ExerciseSetRepository exerciseSets,
                              CourseFileService fileService, Membership membership, Materials materials,
-                             PdfText pdfText, TextGeneration textGeneration, ObjectMapper mapper) {
+                             PdfText pdfText, TextGeneration textGeneration, ObjectMapper mapper,
+                             @Value("${generation.timeout:120s}") Duration timeout) {
+        this.timeout = timeout;
         this.summaries = summaries;
         this.exerciseSets = exerciseSets;
         this.fileService = fileService;
@@ -93,6 +104,40 @@ public class GenerationService {
     @PreDestroy
     void shutdown() {
         executor.shutdownNow();
+    }
+
+    /**
+     * Queues work that belongs to no course file (the AI tools page) behind the course jobs, on the same single
+     * generation thread, so the model is never asked two things at once. Cancelling the future stops the work,
+     * whether it is still waiting or already running.
+     */
+    public <T> Future<T> startAdHoc(Supplier<T> work) {
+        Callable<T> job = work::get;
+        return executor.submit(job);
+    }
+
+    /**
+     * {@link #startAdHoc} and wait for the result. Waits at most {@code generation.timeout}, queue time included;
+     * then the work is cancelled and this throws {@code MODEL_TIMEOUT}. A failure of the work, such as a
+     * {@link GenerationFailure}, is rethrown as it is.
+     */
+    public <T> T runAdHoc(Supplier<T> work) {
+        Future<T> future = startAdHoc(work);
+        try {
+            return future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new GenerationFailure("MODEL_TIMEOUT", "The model did not answer in time.", e);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException failure) {
+                throw failure;
+            }
+            throw new IllegalStateException(e.getCause());
+        } catch (InterruptedException e) {
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+            throw new GenerationFailure("MODEL_UNAVAILABLE", "The request was interrupted.", e);
+        }
     }
 
     /** Any member of the file's course may ask for a summary. */
