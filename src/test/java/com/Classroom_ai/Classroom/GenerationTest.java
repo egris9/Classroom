@@ -22,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -30,12 +31,18 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -58,7 +65,7 @@ class GenerationTest {
     @Autowired UserRepository users;
     @Autowired BCryptPasswordEncoder encoder;
     @Autowired JwtTokenUtil jwt;
-    @Autowired TextGeneration textGeneration;
+    @MockitoSpyBean TextGeneration textGeneration;
     @Autowired GenerationService generation;
     @Autowired SummaryRepository summaries;
     @Autowired CourseFileRepository files;
@@ -258,6 +265,41 @@ class GenerationTest {
                 .andReturn().getResponse().getContentAsString();
         assertEquals("FAILED", JsonPath.read(list, "$[0].status"));
         assertEquals("INTERRUPTED", JsonPath.read(list, "$[0].failureCode"));
+    }
+
+    // --- the queue ---
+
+    @Test
+    void requests_run_one_at_a_time_and_the_others_wait_pending() throws Exception {
+        Course c = course();
+        String file = c.uploadText(LESSON);
+        CountDownLatch firstStarted = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger running = new AtomicInteger();
+        AtomicInteger mostAtOnce = new AtomicInteger();
+        doAnswer(call -> {
+            mostAtOnce.accumulateAndGet(running.incrementAndGet(), Math::max);
+            firstStarted.countDown();
+            try {
+                release.await(10, TimeUnit.SECONDS);
+                return call.callRealMethod();
+            } finally {
+                running.decrementAndGet();
+            }
+        }).when(textGeneration).summarize(anyString());
+
+        for (int i = 0; i < 3; i++) {
+            c.generate("summaries", file, c.teacher).andExpect(status().isAccepted());
+        }
+        assertTrue(firstStarted.await(10, TimeUnit.SECONDS));
+        mvc.perform(get("/api/files/" + file + "/summaries").header("Authorization", c.teacher))
+                .andExpect(jsonPath("$[?(@.status=='PENDING')]", hasSize(3)));
+        release.countDown();
+
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(50)).untilAsserted(() ->
+                mvc.perform(get("/api/files/" + file + "/summaries").header("Authorization", c.teacher))
+                        .andExpect(jsonPath("$[?(@.status=='DONE')]", hasSize(3))));
+        assertEquals(1, mostAtOnce.get());
     }
 
     // --- helpers ---
