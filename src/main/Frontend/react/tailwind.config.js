@@ -28,6 +28,12 @@ export default {
         surface: {
           raised: "hsl(var(--surface-raised))",
         },
+        paper: {
+          DEFAULT: "hsl(var(--paper))",
+          foreground: "hsl(var(--paper-foreground))",
+          line: "hsl(var(--paper-line))",
+          mark: "hsl(var(--paper-mark))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
