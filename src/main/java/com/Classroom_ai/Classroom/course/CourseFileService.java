@@ -1,10 +1,11 @@
 package com.Classroom_ai.Classroom.course;
 
-import com.Classroom_ai.Classroom.User.User;
+import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.material.Materials;
 import com.Classroom_ai.Classroom.material.StoredFile;
 import com.Classroom_ai.Classroom.membership.Membership;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,13 +19,15 @@ public class CourseFileService {
     private final CourseService courseService;
     private final Membership membership;
     private final Materials materials;
+    private final ApplicationEventPublisher events;
 
     public CourseFileService(CourseFileRepository courseFileRepository, CourseService courseService,
-                             Membership membership, Materials materials) {
+                             Membership membership, Materials materials, ApplicationEventPublisher events) {
         this.courseFileRepository = courseFileRepository;
         this.courseService = courseService;
         this.membership = membership;
         this.materials = materials;
+        this.events = events;
     }
 
     /** Stores the upload as a file of the course. Only the course's Teacher may do this. */
@@ -47,11 +50,26 @@ public class CourseFileService {
         return courseFileRepository.findByCourseId(courseId);
     }
 
+    /** Removes the file, its Summaries and Exercise sets, and its stored PDF. Only the course's Teacher may do this. */
+    public void delete(User user, Long fileId) {
+        CourseFile file = find(fileId);
+        Course course = file.getCourse();
+        membership.requireTeacher(user, course);
+
+        events.publishEvent(new FileRemoved(file.getId()));
+        course.getFiles().remove(file);
+        AfterCommit.run(() -> materials.delete(file));
+    }
+
     /** The file's record, if the user is a member of its course. */
     public CourseFile get(User user, Long fileId) {
-        CourseFile file = courseFileRepository.findById(fileId)
-                .orElseThrow(() -> new CourseFileNotFoundException("File not found."));
+        CourseFile file = find(fileId);
         membership.requireMember(user, file.getCourse());
         return file;
+    }
+
+    private CourseFile find(Long fileId) {
+        return courseFileRepository.findById(fileId)
+                .orElseThrow(() -> new CourseFileNotFoundException("File not found."));
     }
 }

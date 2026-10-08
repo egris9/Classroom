@@ -1,6 +1,6 @@
 package com.Classroom_ai.Classroom.course;
 
-import com.Classroom_ai.Classroom.User.User;
+import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.api.CourseRequest;
 import com.Classroom_ai.Classroom.api.CourseResponse;
 import com.Classroom_ai.Classroom.api.FileResponse;
@@ -59,6 +59,23 @@ public class CourseController {
         return respond(courseService.getFor(userService.getAuthenticatedUser(), id));
     }
 
+    @DeleteMapping("/courses/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        courseService.delete(userService.getAuthenticatedUser(), id);
+    }
+
+    @DeleteMapping("/courses/{id}/membership")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void leave(@PathVariable Long id) {
+        courseService.leave(userService.getAuthenticatedUser(), id);
+    }
+
+    @GetMapping("/courses/{id}/students")
+    public List<UserResponse> students(@PathVariable Long id) {
+        return courseService.studentsOf(userService.getAuthenticatedUser(), id).stream().map(UserResponse::of).toList();
+    }
+
     @PostMapping("/courses/{id}/files")
     @ResponseStatus(HttpStatus.CREATED)
     public FileResponse upload(@PathVariable Long id, @RequestParam("file") MultipartFile file) throws IOException {
@@ -68,6 +85,12 @@ public class CourseController {
     @GetMapping("/courses/{id}/files")
     public List<FileResponse> files(@PathVariable Long id) {
         return fileService.list(userService.getAuthenticatedUser(), id).stream().map(CourseController::respond).toList();
+    }
+
+    @DeleteMapping("/files/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFile(@PathVariable Long id) {
+        fileService.delete(userService.getAuthenticatedUser(), id);
     }
 
     @GetMapping("/files/{id}/content")

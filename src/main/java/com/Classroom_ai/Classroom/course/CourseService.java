@@ -1,11 +1,14 @@
 package com.Classroom_ai.Classroom.course;
 
-import com.Classroom_ai.Classroom.User.User;
-import com.Classroom_ai.Classroom.User.UserRepository;
+import com.Classroom_ai.Classroom.auth.User;
+import com.Classroom_ai.Classroom.auth.UserRepository;
 import com.Classroom_ai.Classroom.api.CourseRequest;
+import com.Classroom_ai.Classroom.material.Materials;
+import com.Classroom_ai.Classroom.membership.ForbiddenException;
 import com.Classroom_ai.Classroom.membership.Membership;
 import com.Classroom_ai.Classroom.membership.Role;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,11 +21,16 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final Membership membership;
+    private final Materials materials;
+    private final ApplicationEventPublisher events;
 
-    public CourseService(CourseRepository courseRepository, UserRepository userRepository, Membership membership) {
+    public CourseService(CourseRepository courseRepository, UserRepository userRepository, Membership membership,
+                         Materials materials, ApplicationEventPublisher events) {
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.membership = membership;
+        this.materials = materials;
+        this.events = events;
     }
 
     public CourseAccess create(User teacher, CourseRequest request) {
@@ -65,6 +73,39 @@ public class CourseService {
         courseRepository.findByStudentsContaining(user)
                 .forEach(course -> result.add(new CourseAccess(course, Role.STUDENT)));
         return result;
+    }
+
+    /** Removes the course with its files, their generated items, their stored PDFs and its enrolments. Teacher only. */
+    public void delete(User user, Long courseId) {
+        Course course = find(courseId);
+        membership.requireTeacher(user, course);
+
+        List<CourseFile> removed = List.copyOf(course.getFiles());
+        removed.forEach(file -> events.publishEvent(new FileRemoved(file.getId())));
+        for (User student : course.getStudents()) {
+            student.getCourses().remove(course);
+        }
+        courseRepository.delete(course);
+        AfterCommit.run(() -> removed.forEach(materials::delete));
+    }
+
+    /** A Student leaves the course. The Teacher cannot leave their own course, and a non-member has nothing to leave. */
+    public void leave(User user, Long courseId) {
+        Course course = find(courseId);
+        if (membership.requireMember(user, course) == Role.TEACHER) {
+            throw new ForbiddenException("The teacher cannot leave their own course. Delete it instead.");
+        }
+        User managed = userRepository.findById(user.getId()).orElseThrow();
+        managed.getCourses().remove(course);
+        course.getStudents().remove(managed);
+        userRepository.save(managed);
+    }
+
+    /** The students enrolled in the course. Teacher only. */
+    public List<User> studentsOf(User user, Long courseId) {
+        Course course = find(courseId);
+        membership.requireTeacher(user, course);
+        return List.copyOf(course.getStudents());
     }
 
     public CourseAccess getFor(User user, Long courseId) {

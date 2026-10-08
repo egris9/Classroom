@@ -1,6 +1,6 @@
 package com.Classroom_ai.Classroom.membership;
 
-import com.Classroom_ai.Classroom.User.User;
+import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.course.Course;
 import org.springframework.stereotype.Component;
 

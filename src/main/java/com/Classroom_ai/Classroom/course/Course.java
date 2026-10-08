@@ -1,6 +1,6 @@
 package com.Classroom_ai.Classroom.course;
 
-import com.Classroom_ai.Classroom.User.User;
+import com.Classroom_ai.Classroom.auth.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

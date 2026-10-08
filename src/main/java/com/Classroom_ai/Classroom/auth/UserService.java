@@ -1,7 +1,5 @@
 package com.Classroom_ai.Classroom.auth;
 
-import com.Classroom_ai.Classroom.User.User;
-import com.Classroom_ai.Classroom.User.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;

@@ -1,6 +1,6 @@
 package com.Classroom_ai.Classroom.generation;
 
-import com.Classroom_ai.Classroom.User.User;
+import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.course.CourseFile;
 import com.Classroom_ai.Classroom.course.CourseFileService;
 import com.Classroom_ai.Classroom.material.Materials;

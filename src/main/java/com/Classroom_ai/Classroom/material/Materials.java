@@ -77,6 +77,17 @@ public class Materials {
         return resolve(filesDir, file.getFilePath());
     }
 
+    /** Removes the stored PDF of a course file. A file that is already gone, or a key outside the files folder, is left alone. */
+    public void delete(CourseFile file) {
+        try {
+            Files.deleteIfExists(resolve(filesDir, file.getFilePath()).getFile().toPath());
+        } catch (StoredFileMissingException e) {
+            log.debug("Nothing to delete for course file {}", file.getId());
+        } catch (IOException e) {
+            log.warn("Could not delete the stored PDF of course file {}", file.getId(), e);
+        }
+    }
+
     /** Stores a profile picture and returns its key. 413 over the picture limit, 415 unless JPEG, PNG, GIF or WebP. */
     public String putPicture(MultipartFile upload) throws IOException {
         if (upload.getSize() > maxPictureBytes) {

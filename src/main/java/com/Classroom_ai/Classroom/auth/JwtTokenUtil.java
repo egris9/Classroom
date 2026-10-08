@@ -1,6 +1,5 @@
 package com.Classroom_ai.Classroom.auth;
 
-import com.Classroom_ai.Classroom.User.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
