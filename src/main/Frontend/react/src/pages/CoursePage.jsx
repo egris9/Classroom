@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CopyCode from "@/components/CopyCode";
 import CourseMaterials from "@/components/CourseMaterials";
+import CourseCover from "@/components/CourseCover";
 import CoursePeople from "@/components/CoursePeople";
 import CourseSettings from "@/components/CourseSettings";
 import PageContainer from "@/components/PageContainer";
@@ -76,6 +77,7 @@ export default function CoursePage() {
     return (
         <PageContainer className="space-y-6">
             {back}
+            <CourseCover course={course} aspect="aspect-[4/1]" className="rounded-xl" />
             <header className="space-y-3">
                 <h1 className="text-3xl font-semibold">{course.courseName}</h1>
                 <p className="text-muted-foreground">
@@ -107,7 +109,7 @@ export default function CoursePage() {
                     <CoursePeople course={course} />
                 </TabsContent>
                 <TabsContent value="settings">
-                    <CourseSettings course={course} />
+                    <CourseSettings course={course} onCourseChange={setCourse} />
                 </TabsContent>
             </Tabs>
         </PageContainer>
