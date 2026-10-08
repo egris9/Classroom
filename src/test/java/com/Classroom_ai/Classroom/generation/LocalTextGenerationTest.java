@@ -98,6 +98,72 @@ class LocalTextGenerationTest {
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("MODEL_ERROR"));
     }
 
+    private static String words(int count) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            text.append("word").append(i).append(' ');
+        }
+        return text.toString().strip();
+    }
+
+    @Test
+    void text_that_fits_in_one_chunk_costs_one_request() {
+        adapter(server.baseUrl(), Duration.ofSeconds(5), 1000).summarize(words(20));
+
+        assertThat(server.requests()).hasSize(1);
+    }
+
+    @Test
+    void long_text_is_summarised_chunk_by_chunk_and_then_the_summaries_are_summarised() {
+        server.replyWith(user -> "S");
+        String text = words(60);
+
+        String summary = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text);
+
+        int chunks = server.requests().size() - 1;
+        assertThat(chunks).isGreaterThan(1);
+        assertThat(summary).isEqualTo("S");
+        assertThat(server.userMessage(chunks)).isEqualTo(String.join("\n\n", java.util.Collections.nCopies(chunks, "S")));
+    }
+
+    @Test
+    void no_chunk_is_longer_than_the_limit_and_no_word_is_cut_in_two() {
+        server.replyWith(user -> "S");
+        String text = words(60);
+
+        adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text);
+
+        StringBuilder sent = new StringBuilder();
+        for (int i = 0; i < server.requests().size() - 1; i++) {
+            String chunk = server.userMessage(i);
+            assertThat(chunk.length()).isLessThanOrEqualTo(150);
+            sent.append(chunk).append(' ');
+        }
+        assertThat(sent.toString().strip()).isEqualTo(text);
+    }
+
+    @Test
+    void summaries_that_are_still_too_long_are_summarised_again() {
+        server.replyWith(user -> user.startsWith("word") ? "x".repeat(100) : "short");
+        String text = words(120);
+
+        String summary = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text);
+
+        assertThat(summary).isEqualTo("short");
+        for (JsonNode request : server.requests()) {
+            String user = request.path("messages").path(1).path("content").asText();
+            assertThat(user.length()).isLessThanOrEqualTo(150);
+        }
+    }
+
+    @Test
+    void summaries_that_never_get_shorter_fail_with_BAD_OUTPUT() {
+        server.replyWith(user -> "x".repeat(140));
+
+        assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(120)))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
+    }
+
     @Test
     void a_blank_base_url_is_refused_at_construction() {
         assertThatThrownBy(() -> adapter(" ", Duration.ofSeconds(5), 10_000))

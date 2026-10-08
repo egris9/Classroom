@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -27,6 +28,15 @@ import java.util.regex.Pattern;
 public class LocalTextGeneration implements TextGeneration {
 
     private static final Pattern THINK_BLOCK = Pattern.compile("(?s)<think>.*?</think>");
+    private static final int MAX_ROUNDS = 5;
+
+    private static final String SUMMARISE =
+            "You summarise course material for students. Answer in the language of the text.";
+    private static final String SUMMARISE_PART =
+            "You summarise one part of a longer course document. Keep the key points. Answer in the language of the text.";
+    private static final String COMBINE =
+            "You are given summaries of consecutive parts of one course document. Write one summary of the whole "
+                    + "document. Answer in the language of the summaries.";
 
     private final URI endpoint;
     private final String model;
@@ -51,9 +61,50 @@ public class LocalTextGeneration implements TextGeneration {
         this.client = HttpClient.newBuilder().connectTimeout(timeout).build();
     }
 
+    /**
+     * Text that fits in one chunk is summarised in one request. Longer text is cut into chunks, each chunk is
+     * summarised, and the summaries are joined and summarised in turn, again in chunks if they are still too long.
+     */
     @Override
     public String summarize(String text) {
-        return chat("You summarise course material for students. Answer in the language of the text.", text);
+        List<String> chunks = split(text.strip());
+        if (chunks.size() == 1) {
+            return chat(SUMMARISE, chunks.get(0));
+        }
+        for (int round = 0; round < MAX_ROUNDS; round++) {
+            List<String> summaries = new ArrayList<>();
+            for (String chunk : chunks) {
+                summaries.add(chat(SUMMARISE_PART, chunk));
+            }
+            String joined = String.join("\n\n", summaries);
+            if (joined.length() <= chunkChars) {
+                return chat(COMBINE, joined);
+            }
+            chunks = split(joined);
+        }
+        throw new GenerationFailure("BAD_OUTPUT", "The model's summaries did not get shorter.");
+    }
+
+    /** Cuts at whitespace so that no chunk is longer than the limit and no word is split. */
+    private List<String> split(String text) {
+        List<String> chunks = new ArrayList<>();
+        int start = 0;
+        while (start < text.length()) {
+            int end = Math.min(start + chunkChars, text.length());
+            if (end < text.length()) {
+                int space = end;
+                while (space > start && !Character.isWhitespace(text.charAt(space))) {
+                    space--;
+                }
+                end = space > start ? space : end;
+            }
+            chunks.add(text.substring(start, end).strip());
+            start = end;
+            while (start < text.length() && Character.isWhitespace(text.charAt(start))) {
+                start++;
+            }
+        }
+        return chunks.isEmpty() ? List.of("") : chunks;
     }
 
     @Override
