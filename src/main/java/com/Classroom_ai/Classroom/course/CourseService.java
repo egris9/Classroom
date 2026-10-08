@@ -11,6 +11,9 @@ import jakarta.transaction.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -86,7 +89,31 @@ public class CourseService {
             student.getCourses().remove(course);
         }
         courseRepository.delete(course);
-        AfterCommit.run(() -> removed.forEach(materials::delete));
+        AfterCommit.run(() -> removed.forEach(materials::delete));    }
+
+    /** Sets or replaces the cover picture. Teacher only. The old file goes once the change is committed. */
+    public CourseAccess setPicture(User user, Long courseId, MultipartFile upload) throws IOException {
+        Course course = find(courseId);
+        membership.requireTeacher(user, course);
+        String oldKey = course.getPicturePath();
+        course.setPicturePath(materials.putPicture(upload));
+        deleteAfterCommit(oldKey);
+        return new CourseAccess(courseRepository.save(course), Role.TEACHER);
+    }
+
+    /** Removes the cover picture. Teacher only. Removing a cover that is not there changes nothing. */
+    public void removePicture(User user, Long courseId) {
+        Course course = find(courseId);
+        membership.requireTeacher(user, course);
+        String oldKey = course.getPicturePath();
+        course.setPicturePath(null);
+        deleteAfterCommit(oldKey);
+    }
+
+    private void deleteAfterCommit(String pictureKey) {
+        if (pictureKey != null) {
+            AfterCommit.run(() -> materials.deletePicture(pictureKey));
+        }
     }
 
     /** A Student leaves the course. The Teacher cannot leave their own course, and a non-member has nothing to leave. */

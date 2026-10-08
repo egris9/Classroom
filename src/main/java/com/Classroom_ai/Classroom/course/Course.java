@@ -32,6 +32,9 @@ public class Course {
 
     private String accessCode;
 
+    /** Key of the cover picture under the upload folder, or null when the course has none. */
+    private String picturePath;
+
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CourseFile> files = new ArrayList<>();
 
