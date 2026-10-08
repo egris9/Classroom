@@ -9,7 +9,6 @@ import JoinPage from "./Templates/join.jsx";
 import Courses from "./Templates/courses.jsx";
 import PDFUpload from "./Templates/PDFUpload.jsx"
 import PDFDisplay from "./Templates/PDFDisplay.jsx"
-import Tools1 from "./Templates/tools.jsx"
 import Styleguide from "./Templates/styleguide.jsx";
 import { ThemeProvider as MaterialThemeProvider } from "@material-tailwind/react";
 import { ThemeProvider } from "next-themes";
@@ -38,7 +37,6 @@ ReactDOM.createRoot(root).render(
                                     <Route path="/courses" element={<Courses />} />
                                     <Route path="/pdfupload/:courseid" element={<PDFUpload />} />
                                     <Route path="/coursepdfs/:courseid" element={<PDFDisplay />} />
-                                    <Route path="/tools" element={<Tools1 />} />
                                 </Route>
                             </Route>
                         </Route>

@@ -46,9 +46,6 @@ export function AppShell() {
             <NavLink to="/courses" className={linkClass} onClick={() => setMenuOpen(false)}>
                 Courses
             </NavLink>
-            <NavLink to="/tools" className={linkClass} onClick={() => setMenuOpen(false)}>
-                Tools
-            </NavLink>
         </>
     );
 
