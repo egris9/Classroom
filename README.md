@@ -31,9 +31,11 @@ The backend reads environment variables, and also a `.env` file in the repo root
 | `GENERATION_ADAPTER` | `fake` | `fake` or `local`. Without the three `GENERATION_*` lines of `.env.example` the adapter is `fake` and summaries are demo quotes of the PDF, not real summaries. |
 | `GENERATION_BASE_URL` | empty | Model server url, for example `http://127.0.0.1:8081`. Required when the adapter is `local`. |
 | `GENERATION_MODEL` | empty | Model name sent with each request |
-| `GENERATION_TIMEOUT` | `120s` | Time allowed for one call to the model |
+| `GENERATION_TIMEOUT` | `120s` | Time allowed for one call to the model (for a streamed chat reply, the longest silence between two pieces) |
 | `GENERATION_CHUNK_CHARS` | `10000` | Longest piece of text sent to the model at once |
 | `GENERATION_MAX_CHUNKS` | `40` | A document with more pieces fails with `TOO_LONG` |
+| `TOOLS_TRIAL_SALT` | none | **Required.** The app refuses to start without it. Anyone may use the AI tools once without an account; visitors are remembered only as hashes of their cookie and address mixed with this salt. Any long random text; `openssl rand -hex 32` makes one. Changing it gives every visitor a fresh free try. |
+| `TOOLS_TRIAL_TRUST_FORWARDED` | `false` | Set `true` only behind a proxy you run that sets `X-Forwarded-For`. Otherwise the header is ignored, because any caller can forge it. |
 
 The frontend reads one variable at build time: `VITE_API_URL`, the backend url (default `http://localhost:8080`). The backend allows the origin `http://localhost:5175` only, which is the port the dev server uses.
 

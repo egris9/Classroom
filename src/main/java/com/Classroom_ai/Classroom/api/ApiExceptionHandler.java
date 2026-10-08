@@ -10,6 +10,7 @@ import com.Classroom_ai.Classroom.material.FileTooLargeException;
 import com.Classroom_ai.Classroom.material.StoredFileMissingException;
 import com.Classroom_ai.Classroom.material.UnsupportedFileTypeException;
 import com.Classroom_ai.Classroom.membership.ForbiddenException;
+import com.Classroom_ai.Classroom.tools.TrialUsedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -88,6 +89,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(AlreadyTeacherException.class)
     public ResponseEntity<ErrorBody> alreadyTeacher(AlreadyTeacherException e) {
         return respond(HttpStatus.CONFLICT, "ALREADY_TEACHER", e.getMessage());
+    }
+
+    @ExceptionHandler(TrialUsedException.class)
+    public ResponseEntity<ErrorBody> trialUsed(TrialUsedException e) {
+        return respond(HttpStatus.FORBIDDEN, "TRIAL_USED", e.getMessage());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

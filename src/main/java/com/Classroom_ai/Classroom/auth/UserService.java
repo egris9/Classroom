@@ -1,5 +1,7 @@
 package com.Classroom_ai.Classroom.auth;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,16 @@ public class UserService {
         // Fetch the user by ID
         return userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + userEmail));
+    }
+
+    /** The signed-in user, or empty for a visitor with no token, an invalid one, or one for an account that is gone. */
+    public Optional<User> findAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken
+                || !authentication.isAuthenticated()) {
+            return Optional.empty();
+        }
+        return userRepository.findByEmail(authentication.getName());
     }
 
     public Optional<User> find(Long id) {

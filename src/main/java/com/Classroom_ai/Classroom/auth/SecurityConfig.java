@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/picture").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/courses/*/picture").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tools/trial").permitAll()
                         .requestMatchers("Templates/components/courses/course_card/**").permitAll()
                         .anyRequest().authenticated()); // Assurez-vous que d'autres routes nécessitent une authentification
         return http.build();
