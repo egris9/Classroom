@@ -83,13 +83,15 @@ public class CourseService {
         Course course = find(courseId);
         membership.requireTeacher(user, course);
 
+        String pictureKey = course.getPicturePath();
         List<CourseFile> removed = List.copyOf(course.getFiles());
         removed.forEach(file -> events.publishEvent(new FileRemoved(file.getId())));
         for (User student : course.getStudents()) {
             student.getCourses().remove(course);
         }
         courseRepository.delete(course);
-        AfterCommit.run(() -> removed.forEach(materials::delete));    }
+        AfterCommit.run(() -> removed.forEach(materials::delete));
+        deleteAfterCommit(pictureKey);    }
 
     /** Sets or replaces the cover picture. Teacher only. The old file goes once the change is committed. */
     public CourseAccess setPicture(User user, Long courseId, MultipartFile upload) throws IOException {
