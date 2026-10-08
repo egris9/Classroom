@@ -12,8 +12,11 @@ import java.net.ServerSocket;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LocalTextGenerationTest {
@@ -496,6 +499,30 @@ class LocalTextGenerationTest {
         assertFailsWith("MODEL_TIMEOUT", () -> chatDeltas(impatient, "Hi"));
 
         assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
+    }
+
+    @Test
+    void chatEndsAtOnceWhenTheCallingThreadIsInterruptedInsteadOfWaitingForTheTimeout() throws Exception {
+        server.streamsChunks("Partial").cutsStreamShort(4000);
+        LocalTextGeneration patient = adapter(server.baseUrl(), Duration.ofSeconds(30), 10_000);
+        List<String> deltas = new CopyOnWriteArrayList<>();
+        AtomicReference<Throwable> outcome = new AtomicReference<>();
+        Thread caller = new Thread(() -> {
+            try {
+                patient.chat(List.of(new ChatMessage("user", "Hi")), deltas::add);
+            } catch (Throwable thrown) {
+                outcome.set(thrown);
+            }
+        });
+        caller.start();
+        await().atMost(Duration.ofSeconds(5)).until(() -> !deltas.isEmpty());
+
+        caller.interrupt();
+        caller.join(3000);
+
+        assertThat(caller.isAlive()).isFalse();
+        assertThat(outcome.get()).isInstanceOfSatisfying(GenerationFailure.class,
+                failure -> assertThat(failure.code()).isEqualTo("MODEL_UNAVAILABLE"));
     }
 
     @Test
