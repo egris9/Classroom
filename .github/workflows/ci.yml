@@ -26,12 +26,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            src/main/Frontend/react/package-lock.json
-      # react-pdf, jwt-decode, react-icons and react-toastify resolve through the
-      # repo-root package.json until S6 moves them.
-      - run: npm ci
+          cache-dependency-path: src/main/Frontend/react/package-lock.json
       - run: npm ci
         working-directory: src/main/Frontend/react
       - run: npm run build

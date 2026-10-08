@@ -1,11 +1,15 @@
 import { Typography } from "@material-tailwind/react";
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { fetchFileContent, getCourse, listFiles } from "../api/courses.js";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { deleteCourse, deleteFile, fetchFileContent, getCourse, leaveCourse, listFiles } from "../api/courses.js";
+import ConfirmAction from "../components/ConfirmAction.jsx";
 import FileGenerations from "../components/FileGenerations.jsx";
+import StudentList from "../components/StudentList.jsx";
 
 export function PDFDisplay() {
     const { courseid } = useParams();
+    const navigate = useNavigate();
     const [pdfList, setPdfList] = useState([]);
     const [role, setRole] = useState(null);
     const [error, setError] = useState(null);
@@ -42,6 +46,26 @@ export function PDFDisplay() {
         } catch (error) {
             viewer.close();
             setError(error.message);
+        }
+    };
+
+    const removeFile = async (pdf) => {
+        try {
+            await deleteFile(pdf.id);
+            setPdfList((current) => current.filter((item) => item.id !== pdf.id));
+            toast.success(`${pdf.fileName} deleted.`);
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
+
+    const leaveOrDelete = async (action, done) => {
+        try {
+            await action(courseid);
+            toast.success(done);
+            navigate("/courses");
+        } catch (error) {
+            toast.error(error.message);
         }
     };
 
@@ -84,6 +108,15 @@ export function PDFDisplay() {
                                                         >
                                                             view PDF
                                                         </button>
+                                                        {role === "TEACHER" && (
+                                                            <ConfirmAction
+                                                                label="Delete PDF"
+                                                                title={`Delete ${pdf.fileName}?`}
+                                                                description="The PDF and every summary and exercise set made from it are removed for everyone in the course. This cannot be undone."
+                                                                confirmLabel="Delete PDF"
+                                                                onConfirm={() => removeFile(pdf)}
+                                                            />
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <FileGenerations file={pdf} role={role} />
@@ -107,6 +140,37 @@ export function PDFDisplay() {
                                 >
                                     Add a New PDF
                                 </Link>
+                            </div>
+                        )}
+
+                        {role === "TEACHER" && (
+                            <div className="mt-8">
+                                <StudentList courseId={courseid} />
+                            </div>
+                        )}
+
+                        {role === "TEACHER" && (
+                            <div className="mt-8 flex justify-center">
+                                <ConfirmAction
+                                    label="Delete course"
+                                    size="default"
+                                    title="Delete this course?"
+                                    description="The course, its PDFs, their summaries and exercise sets, and every student's enrolment are removed. This cannot be undone."
+                                    confirmLabel="Delete course"
+                                    onConfirm={() => leaveOrDelete(deleteCourse, "Course deleted.")}
+                                />
+                            </div>
+                        )}
+                        {role === "STUDENT" && (
+                            <div className="mt-8 flex justify-center">
+                                <ConfirmAction
+                                    label="Leave course"
+                                    size="default"
+                                    title="Leave this course?"
+                                    description="You lose access to its PDFs and to the results you asked for. You can join again with the access code."
+                                    confirmLabel="Leave course"
+                                    onConfirm={() => leaveOrDelete(leaveCourse, "You left the course.")}
+                                />
                             </div>
                         )}
                     </div>
