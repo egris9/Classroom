@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Markdown } from "@/components/Markdown";
 import { StatusBadge } from "@/components/StatusBadge";
 import { listExerciseSets, listSummaries, requestExerciseSet, requestSummary } from "../api/generation.js";
 
@@ -143,7 +144,7 @@ export function FileResults({ file, role }) {
                                 <ResultBadge item={summary} />
                             </div>
                             <DemoNotice item={summary} />
-                            {summary.text && <p className="whitespace-pre-wrap text-sm">{summary.text}</p>}
+                            {summary.text && <Markdown>{summary.text}</Markdown>}
                             <Failure item={summary} />
                         </CardContent>
                     </Card>
