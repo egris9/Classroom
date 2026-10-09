@@ -1,17 +1,35 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import AuthLayout from "@/components/AuthLayout";
+import FormField from "@/components/FormField";
 import PasswordInput from "@/components/PasswordInput";
 import { isSignedIn, signIn } from "../api/auth.js";
+import { EMAIL_PATTERN, focusFirstError } from "../lib/validation.js";
+
+const FIELDS = ["email", "password"];
+
+const validate = ({ email, password }) => {
+    const errors = {};
+    if (!email.trim()) {
+        errors.email = "Enter your email.";
+    } else if (!EMAIL_PATTERN.test(email.trim())) {
+        errors.email = "Enter an email like name@example.com.";
+    }
+    if (!password) {
+        errors.password = "Enter your password.";
+    }
+    return errors;
+};
 
 export default function SignIn() {
     const navigate = useNavigate();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [values, setValues] = useState({ email: "", password: "" });
+    const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -19,12 +37,24 @@ export default function SignIn() {
         return <Navigate to="/courses" replace />;
     }
 
+    const change = (event) => {
+        const { name, value } = event.target;
+        setValues({ ...values, [name]: value });
+        setFieldErrors((current) => ({ ...current, [name]: undefined }));
+    };
+
     const submit = async (event) => {
         event.preventDefault();
         setError(null);
+        const errors = validate(values);
+        setFieldErrors(errors);
+        if (Object.keys(errors).length > 0) {
+            focusFirstError(errors, FIELDS);
+            return;
+        }
         setSubmitting(true);
         try {
-            await signIn(email, password);
+            await signIn(values.email.trim(), values.password);
             navigate("/courses");
         } catch (err) {
             setError(err.response?.data?.message || "Sign in failed. Check your email and password.");
@@ -33,41 +63,46 @@ export default function SignIn() {
     };
 
     return (
-        <div className="mx-auto flex w-full max-w-md flex-col px-4 py-12 sm:py-20">
+        <AuthLayout>
             <Card>
                 <CardHeader>
-                    <h1 className="text-2xl font-semibold leading-none">Sign in</h1>
+                    <h1 className="text-title font-semibold">Sign in</h1>
                     <CardDescription>Welcome back. Your courses are waiting.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={submit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                autoComplete="email"
-                                value={email}
-                                onChange={(event) => setEmail(event.target.value)}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
-                            <PasswordInput
-                                id="password"
-                                autoComplete="current-password"
-                                value={password}
-                                onChange={(event) => setPassword(event.target.value)}
-                                required
-                            />
-                        </div>
+                    <form onSubmit={submit} noValidate aria-busy={submitting} className="space-y-4">
+                        <FormField id="email" label="Email" error={fieldErrors.email}>
+                            {(field) => (
+                                <Input
+                                    {...field}
+                                    name="email"
+                                    type="email"
+                                    autoComplete="email"
+                                    value={values.email}
+                                    onChange={change}
+                                    required
+                                />
+                            )}
+                        </FormField>
+                        <FormField id="password" label="Password" error={fieldErrors.password}>
+                            {(field) => (
+                                <PasswordInput
+                                    {...field}
+                                    name="password"
+                                    autoComplete="current-password"
+                                    value={values.password}
+                                    onChange={change}
+                                    required
+                                />
+                            )}
+                        </FormField>
                         {error && (
                             <Alert variant="destructive">
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
-                        <Button type="submit" className="h-11 w-full" disabled={submitting}>
+                        <Button type="submit" className="h-11 w-full gap-2" disabled={submitting}>
+                            {submitting && <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />}
                             {submitting ? "Signing in..." : "Sign in"}
                         </Button>
                     </form>
@@ -79,6 +114,6 @@ export default function SignIn() {
                     </p>
                 </CardContent>
             </Card>
-        </div>
+        </AuthLayout>
     );
 }
