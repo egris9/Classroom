@@ -63,6 +63,18 @@ npm --prefix src/main/Frontend/react run dev
 
 Open <http://localhost:5175>. Sign up, create a course, upload a PDF, and choose Summarise.
 
+### Pages
+
+| Route | Who | What |
+|---|---|---|
+| `/` | anyone (signed in: goes to My courses) | Landing page |
+| `/signin`, `/signup` | anyone | Sign in, create an account |
+| `/tools` | anyone | AI study tools: summary, exercises and a streaming chat. A visitor with no account gets one use, then is asked to sign up (see `TOOLS_*` above). |
+| `/courses` | signed in | My courses: Teaching and Enrolled, Add course (create or join with a code) |
+| `/courses/:courseId` | members | Course: Materials, People, Settings (cover picture, delete or leave) |
+| `/courses/:courseId/files/:fileId` | members | A PDF beside its Summary and Exercises |
+| anything else | anyone | Not found page |
+
 ## Model server
 
 The default `fake` adapter needs nothing. For real output, start a server and switch the adapter. This is the setup the project was developed with, llama.cpp serving Qwen3.5 4B:
