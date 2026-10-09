@@ -27,7 +27,7 @@ function ResultBadge({ item }) {
 }
 
 function Empty({ children }) {
-    return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>;
+    return <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
 /** The Summaries and Exercise sets of one file, with the buttons that ask for new ones. */
@@ -94,18 +94,23 @@ export function FileResults({ file, role }) {
 
     return (
         <Tabs defaultValue="summary">
-            <TabsList className="h-11">
-                <TabsTrigger value="summary" className="h-9 px-4">
+            <TabsList className="h-14">
+                <TabsTrigger value="summary" className="h-11 px-5">
                     Summary
                 </TabsTrigger>
-                <TabsTrigger value="exercises" className="h-9 px-4">
+                <TabsTrigger value="exercises" className="h-11 px-5">
                     Exercises
                 </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="summary" className="space-y-4">
-                <Button className="h-11" disabled={busy} onClick={() => request(requestSummary, "Summary")}>
-                    Summarise
+            <TabsContent value="summary" className="mt-4 space-y-4">
+                <Button
+                    variant={summaries.length === 0 ? "default" : "outline"}
+                    className="h-11"
+                    disabled={busy}
+                    onClick={() => request(requestSummary, "Summary")}
+                >
+                    {summaries.length === 0 ? "Summarise" : "Summarise again"}
                 </Button>
                 {error && (
                     <Alert variant="destructive">
@@ -118,7 +123,7 @@ export function FileResults({ file, role }) {
                 ))}
             </TabsContent>
 
-            <TabsContent value="exercises" className="space-y-4">
+            <TabsContent value="exercises" className="mt-4 space-y-4">
                 {isTeacher && (
                     <Button
                         variant="outline"

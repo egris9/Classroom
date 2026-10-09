@@ -10,13 +10,37 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-/** A button that asks before it does something that cannot be undone. The label is the outcome, not "Delete". */
-export function ConfirmAction({ label, title, description, confirmLabel, onConfirm, size = "sm", disabled = false }) {
+const QUIET_CLASS = "text-destructive hover:bg-destructive/10 hover:text-destructive";
+
+/**
+ * A button that asks before it does something that cannot be undone. The label is the outcome, not "Delete".
+ * `tone="quiet"` is a red-lettered outline button for a destructive action that sits in a list or beside another
+ * button; the solid red button inside the dialog is the one that does it.
+ */
+export function ConfirmAction({
+    label,
+    title,
+    description,
+    confirmLabel,
+    onConfirm,
+    size = "sm",
+    tone = "solid",
+    className,
+    triggerLabel,
+    disabled = false,
+}) {
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" size={size} disabled={disabled}>
+                <Button
+                    variant={tone === "quiet" ? "outline" : "destructive"}
+                    size={size}
+                    disabled={disabled}
+                    aria-label={triggerLabel}
+                    className={cn(tone === "quiet" && QUIET_CLASS, className)}
+                >
                     {label}
                 </Button>
             </AlertDialogTrigger>

@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { DemoNotice, ResultFailure } from "@/components/SummaryCard";
+import { DemoNotice, PendingNotice, ResultFailure } from "@/components/SummaryCard";
 
 /** One Exercise set as a card: each question with its answer behind "Show answer". `badge` is an optional node. */
 export function ExerciseList({ set, badge }) {
@@ -11,6 +11,7 @@ export function ExerciseList({ set, badge }) {
                     {badge}
                 </div>
                 <DemoNotice item={set} />
+                <PendingNotice item={set} />
                 <ol className="list-decimal space-y-3 pl-5 text-sm leading-reading">
                     {(set.exercises ?? []).map((exercise) => (
                         <li key={exercise.question}>

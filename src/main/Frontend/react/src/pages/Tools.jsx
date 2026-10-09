@@ -82,7 +82,7 @@ export default function Tools() {
     return (
         <PageContainer className="max-w-screen-md space-y-6">
             <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">AI study tools</h1>
+                <h1 className="text-title font-semibold">AI study tools</h1>
                 <p className="text-muted-foreground">
                     Summarise a text or a PDF, turn it into exercises with answers, or ask the study assistant a
                     question. Nothing you send here is kept on the server.
@@ -92,14 +92,14 @@ export default function Tools() {
             <TrialBanner trial={trial} />
 
             <Tabs value={tab} onValueChange={setTab}>
-                <TabsList className="h-11">
-                    <TabsTrigger value="summary" className="h-9 px-4">
+                <TabsList className="h-14">
+                    <TabsTrigger value="summary" className="h-11 px-3 sm:px-5">
                         Summary
                     </TabsTrigger>
-                    <TabsTrigger value="exercises" className="h-9 px-4">
+                    <TabsTrigger value="exercises" className="h-11 px-3 sm:px-5">
                         Exercises
                     </TabsTrigger>
-                    <TabsTrigger value="chat" className="h-9 px-4">
+                    <TabsTrigger value="chat" className="h-11 px-3 sm:px-5">
                         Chat
                     </TabsTrigger>
                 </TabsList>

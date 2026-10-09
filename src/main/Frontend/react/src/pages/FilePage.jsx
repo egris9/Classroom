@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import FileResults from "@/components/FileResults";
 import PageContainer from "@/components/PageContainer";
 import PdfViewer from "@/components/PdfViewer";
@@ -13,6 +14,7 @@ export default function FilePage() {
     const { courseId, fileId } = useParams();
     const [state, setState] = useState({ course: null, file: null });
     const [error, setError] = useState(null);
+    const [showPdf, setShowPdf] = useState(false);
 
     const load = useCallback(() => {
         setError(null);
@@ -71,13 +73,30 @@ export default function FilePage() {
         );
     }
 
+    // Results come first in the page and in the reading order. On a desktop the PDF sits beside them and stays in
+    // view while a long result scrolls; on a phone it is behind a toggle so Summarise is on the first screen.
     return (
         <PageContainer className="space-y-4">
             {back}
-            <h1 className="break-words text-3xl font-semibold">{file.fileName}</h1>
-            <div className="grid gap-6 lg:grid-cols-2">
-                <PdfViewer fileId={file.id} title={file.fileName} />
+            <h1 className="break-words text-title font-semibold">{file.fileName}</h1>
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                 <FileResults file={file} role={course.role} />
+                <div className="flex flex-col gap-3 lg:sticky lg:top-20">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 gap-2 lg:hidden"
+                        aria-expanded={showPdf}
+                        aria-controls="pdf-panel"
+                        onClick={() => setShowPdf((open) => !open)}
+                    >
+                        {showPdf ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                        {showPdf ? "Hide PDF" : "Show PDF"}
+                    </Button>
+                    <div id="pdf-panel" className={cn(!showPdf && "hidden", "lg:block")}>
+                        <PdfViewer fileId={file.id} title={file.fileName} />
+                    </div>
+                </div>
             </div>
         </PageContainer>
     );
