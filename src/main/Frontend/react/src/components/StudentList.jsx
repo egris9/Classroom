@@ -40,10 +40,10 @@ export function StudentList({ courseId }) {
     }
 
     return (
-        <ul className="divide-y rounded-lg border bg-card">
+        <ul className="divide-y rounded-xl border bg-card shadow">
             {students.map((student) => (
                 <li key={student.id} className="flex items-center gap-3 p-3">
-                    <UserAvatar name={`${student.firstName} ${student.lastName}`} picture={student.picture} />
+                    <UserAvatar name={`${student.firstName} ${student.lastName}`} picture={student.picture} className="h-10 w-10" />
                     <div className="min-w-0">
                         <p className="truncate font-medium">
                             {student.firstName} {student.lastName}

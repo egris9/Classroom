@@ -135,6 +135,8 @@
     @apply bg-background text-foreground font-sans antialiased;
     background-image: var(--gradient-surface);
     background-repeat: no-repeat;
+    /* Tied to the window, so a short page does not end its gradient above the footer. */
+    background-attachment: fixed;
   }
 
   /* The action colour as a gradient on every shadcn button and link-button. */
@@ -145,6 +147,13 @@
   button.bg-primary:hover,
   a.bg-primary:hover {
     filter: brightness(1.08);
+  }
+  /* A disabled action loses its colour, not just half its opacity, so it cannot pass for an enabled one in dark. */
+  button.bg-primary:disabled {
+    background-image: none;
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    box-shadow: none;
   }
 
   h1, h2, h3, h4 {
@@ -157,6 +166,28 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* The bar of an indeterminate Progress: a stretch of the track that slides across it. */
+  .progress-indeterminate {
+    width: 40%;
+    animation: progress-slide 1.4s ease-in-out infinite;
+  }
+
+  @keyframes progress-slide {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(250%); }
+  }
+
+  /* Reduced motion: a still, half-strength bar that fills the track. */
+  @media (prefers-reduced-motion: reduce) {
+    .progress-indeterminate {
+      width: 100%;
+      animation: none;
+      opacity: 0.5;
     }
   }
 }

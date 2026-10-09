@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
-/** A password field with a button that shows or hides what was typed. */
-export function PasswordInput(props) {
+/** A password field with a button that shows or hides what was typed. The button is as tall as the field. */
+export function PasswordInput({ className, ...props }) {
     const [shown, setShown] = useState(false);
 
     return (
         <div className="relative">
-            <Input type={shown ? "text" : "password"} className="pr-12" {...props} />
+            <Input type={shown ? "text" : "password"} className={cn("pr-12", className)} {...props} />
             <Button
                 type="button"
                 variant="ghost"

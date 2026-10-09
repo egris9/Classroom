@@ -16,7 +16,14 @@ const STORAGE_KEY = "tools_chat";
 const MAX_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 4000;
 
-const isMessage = (item) =>
+// Starting points for an empty chat. A click fills the composer; the reader still decides to send.
+const SUGGESTIONS = [
+    "Explain photosynthesis in simple words",
+    "Give me three tips for remembering formulas",
+    "What is the difference between a theory and a law?",
+];
+
+const isMessage =(item) =>
     (item?.role === "user" || item?.role === "assistant") && typeof item.content === "string";
 
 const loadMessages = () => {
@@ -158,9 +165,24 @@ export function ChatPanel({ attempt, active = true }) {
                 <ScrollArea ref={listRef} className="h-[min(60vh,28rem)]">
                     <ul aria-live="polite" aria-busy={streaming} aria-label="Conversation" className="space-y-3 p-4">
                         {messages.length === 0 && !streaming && (
-                            <li className="py-8 text-center text-sm text-muted-foreground">
-                                Ask a question about what you are studying. The assistant answers briefly and says so when
-                                it does not know.
+                            <li className="space-y-4 py-6 text-center">
+                                <p className="text-sm text-muted-foreground">
+                                    Ask a question about what you are studying. The assistant answers briefly and says so
+                                    when it does not know.
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {SUGGESTIONS.map((suggestion) => (
+                                        <Button
+                                            key={suggestion}
+                                            type="button"
+                                            variant="outline"
+                                            className="h-auto min-h-11 whitespace-normal px-4 py-2"
+                                            onClick={() => setDraft(suggestion)}
+                                        >
+                                            {suggestion}
+                                        </Button>
+                                    ))}
+                                </div>
                             </li>
                         )}
                         {messages.map((message, index) => (

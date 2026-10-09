@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, Menu } from "lucide-react";
+import { BookOpen, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -20,13 +22,16 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { clearSession, getUser, isSignedIn } from "../api/auth.js";
-import ImagePlaceholder from "./ImagePlaceholder.jsx";
+import BrandMark from "./BrandMark.jsx";
 import UserAvatar from "./UserAvatar.jsx";
 
+// The current page gets a bar under its label as well as the darker text, so it does not rely on colour alone.
 const linkClass = ({ isActive }) =>
     cn(
-        "inline-flex h-11 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        isActive ? "text-foreground" : "text-muted-foreground",
+        "relative inline-flex h-11 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isActive
+            ? "text-foreground after:absolute after:inset-x-3 after:bottom-1 after:h-0.5 after:rounded-full after:bg-primary"
+            : "text-muted-foreground hover:text-foreground",
     );
 
 export function AppShell() {
@@ -59,17 +64,9 @@ export function AppShell() {
                 >
                     <Link
                         to="/"
-                        className="mr-4 flex items-center gap-2 rounded-md font-display text-xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="mr-4 flex min-h-11 items-center gap-2 rounded-md font-display text-xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                        <ImagePlaceholder
-                            src="/images/logo.png"
-                            caption="ClassHub logo mark"
-                            alt=""
-                            aspect="1 / 1"
-                            compact
-                            priority
-                            className="h-8 w-8 shrink-0"
-                        />
+                        <BrandMark />
                         ClassHub
                     </Link>
 
@@ -90,13 +87,26 @@ export function AppShell() {
                         {signedIn ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="hidden h-11 gap-2 px-3 md:inline-flex">
-                                        <UserAvatar name={fullName} picture={user?.picture} className="h-7 w-7" />
-                                        {user?.firstName || "Account"}
-                                        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                                    <Button
+                                        variant="ghost"
+                                        className="hidden h-11 w-11 rounded-full p-0 md:inline-flex"
+                                        aria-label={`Account menu for ${fullName || "you"}`}
+                                    >
+                                        <UserAvatar name={fullName} picture={user?.picture} className="h-9 w-9" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuLabel className="font-normal">
+                                        <span className="block text-xs text-muted-foreground">Signed in as</span>
+                                        <span className="block truncate text-sm font-medium">{fullName || "you"}</span>
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem asChild className="min-h-11">
+                                        <Link to="/courses">
+                                            <BookOpen className="mr-2 h-4 w-4" aria-hidden="true" />
+                                            My courses
+                                        </Link>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem className="min-h-11" onSelect={signOut}>
                                         <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
                                         Sign out

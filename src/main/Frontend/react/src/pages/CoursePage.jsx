@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CopyCode from "@/components/CopyCode";
 import CourseMaterials from "@/components/CourseMaterials";
 import CourseCover from "@/components/CourseCover";
+import CourseMeta from "@/components/CourseMeta";
 import CoursePeople from "@/components/CoursePeople";
 import CourseSettings from "@/components/CourseSettings";
 import PageContainer from "@/components/PageContainer";
@@ -65,6 +66,7 @@ export default function CoursePage() {
         return (
             <PageContainer className="space-y-4" aria-busy="true">
                 {back}
+                <Skeleton className="h-32 w-full sm:h-40" />
                 <Skeleton className="h-10 w-2/3" />
                 <Skeleton className="h-6 w-1/3" />
                 <Skeleton className="h-64 w-full" />
@@ -77,38 +79,41 @@ export default function CoursePage() {
     return (
         <PageContainer className="space-y-6">
             {back}
-            <CourseCover course={course} aspect="aspect-[4/1]" className="rounded-xl" />
-            <header className="space-y-3">
-                <h1 className="text-3xl font-semibold">{course.courseName}</h1>
-                <p className="text-muted-foreground">
-                    {course.subject} &middot; Section {course.section} &middot; Room {course.room}
-                </p>
-                <div className="flex items-center gap-2">
-                    <UserAvatar name={course.teacher?.name} picture={course.teacher?.picture} className="h-8 w-8" />
-                    <span className="text-sm">{course.teacher?.name}</span>
+            <header className="space-y-4">
+                <CourseCover course={course} aspect="aspect-auto" className="h-32 rounded-xl border sm:h-40" />
+                <div className="space-y-3">
+                    <h1 className="text-title font-semibold">{course.courseName}</h1>
+                    <CourseMeta course={course} />
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="inline-flex items-center gap-2 rounded-full border bg-card py-1 pl-1 pr-3 text-sm shadow">
+                            <UserAvatar name={course.teacher?.name} picture={course.teacher?.picture} className="h-8 w-8" />
+                            <span className="sr-only">Teacher: </span>
+                            {course.teacher?.name}
+                        </span>
+                        {isTeacher && course.accessCode && <CopyCode code={course.accessCode} />}
+                    </div>
                 </div>
-                {isTeacher && course.accessCode && <CopyCode code={course.accessCode} />}
             </header>
 
             <Tabs defaultValue="materials">
-                <TabsList className="h-11">
-                    <TabsTrigger value="materials" className="h-9 px-4">
+                <TabsList className="h-14">
+                    <TabsTrigger value="materials" className="h-11 px-3 sm:px-5">
                         Materials
                     </TabsTrigger>
-                    <TabsTrigger value="people" className="h-9 px-4">
+                    <TabsTrigger value="people" className="h-11 px-3 sm:px-5">
                         People
                     </TabsTrigger>
-                    <TabsTrigger value="settings" className="h-9 px-4">
+                    <TabsTrigger value="settings" className="h-11 px-3 sm:px-5">
                         Settings
                     </TabsTrigger>
                 </TabsList>
-                <TabsContent value="materials">
+                <TabsContent value="materials" className="mt-6">
                     <CourseMaterials courseId={course.id} role={course.role} files={files} onFilesChange={setFiles} />
                 </TabsContent>
-                <TabsContent value="people">
+                <TabsContent value="people" className="mt-6">
                     <CoursePeople course={course} />
                 </TabsContent>
-                <TabsContent value="settings">
+                <TabsContent value="settings" className="mt-6">
                     <CourseSettings course={course} onCourseChange={setCourse} />
                 </TabsContent>
             </Tabs>

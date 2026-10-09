@@ -4,6 +4,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchFileContent } from "../api/courses.js";
 
+// On a desktop the frame fills the window below the header and the link under it; on a phone it is 60% of the window.
+const FRAME_HEIGHT = "h-[60vh] min-h-[24rem] lg:h-[calc(100dvh-11rem)]";
+
 /** Shows a course PDF in the page. It is fetched through the client, so the token is sent. */
 export function PdfViewer({ fileId, title }) {
     const [url, setUrl] = useState(null);
@@ -40,12 +43,17 @@ export function PdfViewer({ fileId, title }) {
     }
 
     if (!url) {
-        return <Skeleton className="h-[60vh] w-full lg:h-[75vh]" />;
+        return <Skeleton className={`${FRAME_HEIGHT} w-full`} />;
     }
 
     return (
-        <div className="space-y-2">
-            <iframe title={title} src={url} className="h-[60vh] w-full rounded-lg border bg-card lg:h-[75vh]" />
+        <div className="space-y-1">
+            {/* The browser's own viewer reads these open parameters: no thumbnail rail, page fitted to the width. */}
+            <iframe
+                title={title}
+                src={`${url}#navpanes=0&view=FitH`}
+                className={`${FRAME_HEIGHT} w-full rounded-xl border bg-card shadow`}
+            />
             <a
                 href={url}
                 target="_blank"

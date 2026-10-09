@@ -21,7 +21,7 @@ export function HowItWorks() {
                 <h2 id="how" className="text-title font-semibold">
                     How it works
                 </h2>
-                <ol className="mt-10 grid gap-x-10 gap-y-8 md:grid-cols-3">
+                <ol role="list" className="mt-10 grid gap-x-10 gap-y-8 md:grid-cols-3">
                     {STEPS.map((step, index) => (
                         <li key={step.title} className="border-t pt-6">
                             <span aria-hidden="true" className="block font-display text-title font-semibold text-primary">

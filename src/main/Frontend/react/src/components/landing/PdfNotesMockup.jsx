@@ -28,12 +28,14 @@ function Marked({ children }) {
 /** A drawing of the product: a PDF page with the summary written from it. Sample data, nothing in it can be used. */
 export function PdfNotesMockup({ className }) {
     return (
-        <figure
-            role="img"
-            aria-label="Sample: a PDF page about photosynthesis, with the summary ClassHub wrote from it"
-            className={cn("w-full max-w-lg select-none", className)}
-        >
-            <div className="sm:grid sm:grid-cols-12">
+        <figure className={cn("w-full max-w-lg select-none", className)}>
+            {/* The image role sits on this inner div, not on the figure: a figcaption inside an img is not valid ARIA.
+                pointer-events-none keeps the drawn buttons from reacting to the mouse. */}
+            <div
+                role="img"
+                aria-label="Sample: a PDF page about photosynthesis, with the summary ClassHub wrote from it"
+                className="pointer-events-none sm:grid sm:grid-cols-12"
+            >
                 <div className="h-60 space-y-2 overflow-hidden rounded-lg border bg-paper p-5 text-paper-foreground shadow-raised sm:col-start-1 sm:col-end-9 sm:row-start-1 sm:aspect-[3/4] sm:h-auto sm:p-6">
                     <p className="text-[0.6875rem] font-medium">Week 3</p>
                     <p className="pb-2 font-display text-xl font-semibold tracking-tight">Photosynthesis</p>

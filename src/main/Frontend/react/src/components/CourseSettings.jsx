@@ -2,10 +2,29 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { deleteCourse, leaveCourse, removeCoursePicture, setCoursePicture } from "../api/courses.js";
 import ConfirmAction from "./ConfirmAction.jsx";
 import CourseCover from "./CourseCover.jsx";
 import FileDropzone from "./FileDropzone.jsx";
+
+/** One titled card of the Settings tab. The heading is an h2 so the tab reads as a list of sections. */
+function SettingsCard({ id, title, description, danger = false, children }) {
+    return (
+        <section aria-labelledby={id}>
+            <Card className={cn(danger && "border-destructive/50")}>
+                <CardHeader className="pb-3">
+                    <h2 id={id} className="text-heading font-semibold">
+                        {title}
+                    </h2>
+                    {description && <CardDescription>{description}</CardDescription>}
+                </CardHeader>
+                <CardContent>{children}</CardContent>
+            </Card>
+        </section>
+    );
+}
 
 /** Teacher only: shows the current cover, replaces it with a new picture, or removes it. */
 function CoverSection({ course, onCourseChange }) {
@@ -37,12 +56,13 @@ function CoverSection({ course, onCourseChange }) {
     };
 
     return (
-        <section aria-labelledby="settings-cover" className="space-y-3">
-            <h2 id="settings-cover" className="text-lg font-semibold">
-                Cover picture
-            </h2>
-            <CourseCover course={course} aspect="aspect-[3/1]" className="max-w-xl rounded-lg border" />
-            <div className="max-w-xl space-y-3">
+        <SettingsCard
+            id="settings-cover"
+            title="Cover picture"
+            description="Shown on the course list and at the top of this page."
+        >
+            <div className="max-w-xl space-y-4">
+                <CourseCover course={course} aspect="aspect-[3/1]" className="rounded-lg border" />
                 <FileDropzone
                     id="settings-cover-file"
                     label={course.picture ? "Replace the picture" : "Add a picture"}
@@ -60,6 +80,8 @@ function CoverSection({ course, onCourseChange }) {
                         <ConfirmAction
                             label="Remove picture"
                             size="default"
+                            tone="quiet"
+                            className="h-11"
                             title="Remove the cover picture?"
                             description="The course goes back to a coloured cover."
                             confirmLabel="Remove picture"
@@ -68,13 +90,14 @@ function CoverSection({ course, onCourseChange }) {
                     )}
                 </div>
             </div>
-        </section>
+        </SettingsCard>
     );
 }
 
-/** The details of a course, and the one destructive action each role has. */
+/** The details of a course, the Teacher's cover, and the one destructive action each role has. */
 export function CourseSettings({ course, onCourseChange }) {
     const navigate = useNavigate();
+    const isTeacher = course.role === "TEACHER";
 
     const finish = async (action, done) => {
         try {
@@ -87,12 +110,9 @@ export function CourseSettings({ course, onCourseChange }) {
     };
 
     return (
-        <div className="space-y-8">
-            <section aria-labelledby="settings-details" className="space-y-3">
-                <h2 id="settings-details" className="text-lg font-semibold">
-                    Details
-                </h2>
-                <dl className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-3">
+        <div className="max-w-3xl space-y-6">
+            <SettingsCard id="settings-details" title="Details">
+                <dl className="grid gap-4 sm:grid-cols-3">
                     <div>
                         <dt className="text-sm text-muted-foreground">Subject</dt>
                         <dd className="font-medium">{course.subject}</dd>
@@ -106,44 +126,42 @@ export function CourseSettings({ course, onCourseChange }) {
                         <dd className="font-medium">{course.room}</dd>
                     </div>
                 </dl>
-            </section>
+            </SettingsCard>
 
-            {course.role === "TEACHER" && <CoverSection course={course} onCourseChange={onCourseChange} />}
+            {isTeacher && <CoverSection course={course} onCourseChange={onCourseChange} />}
 
-            <section aria-labelledby="settings-danger" className="space-y-3">
-                <h2 id="settings-danger" className="text-lg font-semibold">
-                    {course.role === "TEACHER" ? "Delete this course" : "Leave this course"}
-                </h2>
-                {course.role === "TEACHER" ? (
-                    <>
-                        <p className="text-sm text-muted-foreground">
-                            The course, its PDFs, their summaries and exercise sets, and every enrolment are removed.
-                        </p>
-                        <ConfirmAction
-                            label="Delete course"
-                            size="default"
-                            title="Delete this course?"
-                            description="The course, its PDFs, their summaries and exercise sets, and every student's enrolment are removed. This cannot be undone."
-                            confirmLabel="Delete course"
-                            onConfirm={() => finish(deleteCourse, "Course deleted.")}
-                        />
-                    </>
+            <SettingsCard
+                id="settings-danger"
+                danger
+                title={isTeacher ? "Delete this course" : "Leave this course"}
+                description={
+                    isTeacher
+                        ? "The course, its PDFs, their summaries and exercise sets, and every enrolment are removed."
+                        : "You lose access to its PDFs and to the results you asked for. You can join again with the access code."
+                }
+            >
+                {isTeacher ? (
+                    <ConfirmAction
+                        label="Delete course"
+                        size="default"
+                        className="h-11"
+                        title="Delete this course?"
+                        description="The course, its PDFs, their summaries and exercise sets, and every student's enrolment are removed. This cannot be undone."
+                        confirmLabel="Delete course"
+                        onConfirm={() => finish(deleteCourse, "Course deleted.")}
+                    />
                 ) : (
-                    <>
-                        <p className="text-sm text-muted-foreground">
-                            You lose access to its PDFs and to the results you asked for. You can join again with the access code.
-                        </p>
-                        <ConfirmAction
-                            label="Leave course"
-                            size="default"
-                            title="Leave this course?"
-                            description="You lose access to its PDFs and to the results you asked for. You can join again with the access code."
-                            confirmLabel="Leave course"
-                            onConfirm={() => finish(leaveCourse, "You left the course.")}
-                        />
-                    </>
+                    <ConfirmAction
+                        label="Leave course"
+                        size="default"
+                        className="h-11"
+                        title="Leave this course?"
+                        description="You lose access to its PDFs and to the results you asked for. You can join again with the access code."
+                        confirmLabel="Leave course"
+                        onConfirm={() => finish(leaveCourse, "You left the course.")}
+                    />
                 )}
-            </section>
+            </SettingsCard>
         </div>
     );
 }
