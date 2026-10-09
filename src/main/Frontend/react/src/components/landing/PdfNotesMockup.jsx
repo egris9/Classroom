@@ -49,7 +49,7 @@ export function PdfNotesMockup({ className }) {
                     <Lines widths={[96, 88, 93, 60]} />
                 </div>
 
-                <div className="relative -mt-16 ml-6 space-y-2 sm:col-start-6 sm:col-end-13 sm:row-start-1 sm:ml-0 sm:mt-28">
+                <div className="relative -mt-16 ml-6 space-y-2 sm:col-start-6 sm:col-end-13 sm:row-start-1 sm:ml-0 sm:mt-28 lg:mt-24 xl:mt-28">
                     <span className={cn(buttonVariants({ size: "sm" }), "h-9 bg-[image:var(--gradient-primary)] px-3 text-sm")}>
                         Summarise
                     </span>

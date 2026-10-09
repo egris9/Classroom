@@ -31,7 +31,8 @@ export default function Landing() {
     return (
         <>
             <section className={cn(SECTION, "grid items-center gap-x-10 gap-y-12 lg:grid-cols-12")}>
-                <div className="space-y-6 lg:col-span-7">
+                {/* Half and half at lg: the drawing needs about 460px before its card stops covering the page's text. */}
+                <div className="space-y-6 lg:col-span-6 xl:col-span-7">
                     <h1 className="text-balance text-display font-semibold">Course PDFs, summarised and turned into exercises</h1>
                     <p className="max-w-xl text-lg text-muted-foreground">
                         Teachers upload a PDF and share one code, and the whole course reads it next to its summary.
@@ -45,7 +46,7 @@ export default function Landing() {
                         </Button>
                     </div>
                 </div>
-                <div className="lg:col-span-5">
+                <div className="lg:col-span-6 xl:col-span-5">
                     <PdfNotesMockup />
                 </div>
             </section>
