@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,7 +9,7 @@ import AuthLayout from "@/components/AuthLayout";
 import FormField from "@/components/FormField";
 import PasswordInput from "@/components/PasswordInput";
 import { isSignedIn, signIn } from "../api/auth.js";
-import { EMAIL_PATTERN, focusFirstError } from "../lib/validation.js";
+import { EMAIL_PATTERN, showFieldErrors } from "../lib/validation.js";
 
 const FIELDS = ["email", "password"];
 
@@ -32,6 +32,7 @@ export default function SignIn() {
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const inFlight = useRef(false);
 
     if (isSignedIn()) {
         return <Navigate to="/courses" replace />;
@@ -45,19 +46,25 @@ export default function SignIn() {
 
     const submit = async (event) => {
         event.preventDefault();
-        setError(null);
-        const errors = validate(values);
-        setFieldErrors(errors);
-        if (Object.keys(errors).length > 0) {
-            focusFirstError(errors, FIELDS);
+        // A ref, not the state: two submits in the same tick both see the state as false.
+        if (inFlight.current) {
             return;
         }
+        setError(null);
+        const errors = validate(values);
+        if (Object.keys(errors).length > 0) {
+            showFieldErrors(setFieldErrors, errors, FIELDS);
+            return;
+        }
+        setFieldErrors({});
+        inFlight.current = true;
         setSubmitting(true);
         try {
             await signIn(values.email.trim(), values.password);
             navigate("/courses");
         } catch (err) {
             setError(err.response?.data?.message || "Sign in failed. Check your email and password.");
+            inFlight.current = false;
             setSubmitting(false);
         }
     };

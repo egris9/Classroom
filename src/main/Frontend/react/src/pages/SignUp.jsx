@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import FileDropzone from "@/components/FileDropzone";
 import FormField from "@/components/FormField";
 import PasswordInput from "@/components/PasswordInput";
 import { isSignedIn, signIn, signUp } from "../api/auth.js";
-import { EMAIL_PATTERN, focusFirstError } from "../lib/validation.js";
+import { EMAIL_PATTERN, showFieldErrors } from "../lib/validation.js";
 
 const FIELDS = ["firstName", "lastName", "email", "password"];
 
@@ -41,6 +41,7 @@ export default function SignUp() {
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const inFlight = useRef(false);
 
     if (isSignedIn()) {
         return <Navigate to="/courses" replace />;
@@ -54,13 +55,19 @@ export default function SignUp() {
 
     const submit = async (event) => {
         event.preventDefault();
-        setError(null);
-        const errors = validate(values);
-        setFieldErrors(errors);
-        if (Object.keys(errors).length > 0) {
-            focusFirstError(errors, FIELDS);
+        // A ref, not the state: two submits in the same tick both see the state as false, and the second would
+        // meet EMAIL_TAKEN for the account the first just made.
+        if (inFlight.current) {
             return;
         }
+        setError(null);
+        const errors = validate(values);
+        if (Object.keys(errors).length > 0) {
+            showFieldErrors(setFieldErrors, errors, FIELDS);
+            return;
+        }
+        setFieldErrors({});
+        inFlight.current = true;
         setSubmitting(true);
         const body = new FormData();
         Object.entries(values).forEach(([key, value]) => body.append(key, key === "email" ? value.trim() : value));
@@ -70,15 +77,15 @@ export default function SignUp() {
         try {
             await signUp(body);
         } catch (err) {
+            inFlight.current = false;
+            setSubmitting(false);
             if (err.response?.data?.code === "EMAIL_TAKEN") {
                 // The server's one field-specific answer: show it at the field it is about.
                 const taken = { email: "An account with this email already exists. Sign in instead, or use another email." };
-                setFieldErrors(taken);
-                focusFirstError(taken, FIELDS);
+                showFieldErrors(setFieldErrors, taken, FIELDS);
             } else {
                 setError(err.response?.data?.message || "Sign up failed. Try again.");
             }
-            setSubmitting(false);
             return;
         }
         try {
