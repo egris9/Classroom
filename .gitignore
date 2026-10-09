@@ -9,6 +9,7 @@ target/
 /docs/human-ai-plan.md
 /docs/IMPLEMENTATION_PLAN_V2.md
 /docs/DESIGN_AUDIT.md
+/docs/IMPLEMENTATION_PLAN_V2_FEATURES.md
 /.playwright-mcp/
 /CONTEXT.md
 !.mvn/wrapper/maven-wrapper.jar
