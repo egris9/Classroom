@@ -67,7 +67,7 @@ Open <http://localhost:5175>. Sign up, create a course, upload a PDF, and choose
 
 | Route | Who | What |
 |---|---|---|
-| `/` | anyone (signed in: goes to My courses) | Landing page |
+| `/` | anyone | Landing page (signed in: shows My courses) |
 | `/signin`, `/signup` | anyone | Sign in, create an account |
 | `/tools` | anyone | AI study tools: summary, exercises and a streaming chat. A visitor with no account gets one use, then is asked to sign up (see `TOOLS_*` above). |
 | `/courses` | signed in | My courses: Teaching and Enrolled, Add course (create or join with a code) |
