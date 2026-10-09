@@ -12,12 +12,43 @@
  * Values are HSL channels so Tailwind can add alpha.
  */
 @layer base {
+  /*
+   * Type scale. One size per heading level, fluid between a phone and a desktop:
+   *   text-display  the page's h1          text-title  section h2          text-heading  h3
+   * leading-reading is for text people read in full (summaries, exercises, chat).
+   */
+  :root {
+    --text-display: clamp(2.5rem, 5vw + 1rem, 4.5rem);
+    --text-title: clamp(1.75rem, 2.5vw + 1rem, 2.5rem);
+    --text-heading: 1.25rem;
+    --leading-display: 1.04;
+    --leading-title: 1.12;
+    --leading-heading: 1.3;
+    --leading-reading: 1.6;
+    --tracking-display: -0.035em;
+    --tracking-title: -0.025em;
+    --tracking-heading: -0.015em;
+  }
+
+  /*
+   * Surfaces, from the page up: background, card, surface-raised (something that sits on a card or floats).
+   * In light a raised surface is told apart by its shadow, in dark by being lighter.
+   * Shadows are tinted with the surface hue: the card shadow rests (class `shadow`), the raised one floats.
+   */
   :root,
   .light {
     --background: 295 25% 96%;       /* mauve */
     --foreground: 290 30% 12%;
     --card: 0 0% 100%;
     --card-foreground: 290 30% 12%;
+    --surface-raised: 0 0% 100%;
+    --shadow-card: 0 1px 2px hsl(292 40% 20% / 0.05), 0 4px 12px -6px hsl(295 45% 30% / 0.12);
+    --shadow-raised: 0 2px 4px hsl(292 40% 20% / 0.06), 0 24px 48px -20px hsl(295 55% 30% / 0.28);
+    /* A printed page, for drawings of a PDF. It stays light in both themes, like a PDF does. */
+    --paper: 300 30% 99%;
+    --paper-foreground: 290 30% 14%;
+    --paper-line: 293 14% 84%;
+    --paper-mark: 298 85% 88%;
     --popover: 0 0% 100%;
     --popover-foreground: 290 30% 12%;
     --muted: 295 20% 93%;
@@ -27,7 +58,7 @@
     --accent: 295 20% 93%;
     --accent-foreground: 290 30% 12%;
     --border: 295 18% 86%;
-    --input: 295 14% 78%;
+    --input: 293 10% 52%;            /* 3:1 against every surface, so a field's edge is visible */
 
     --primary: 295 72% 40%;          /* 700 step */
     --primary-foreground: 0 0% 100%;
@@ -37,7 +68,7 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;           /* amber-500 */
     --warning-foreground: 292 28% 8%;
-    --destructive: 0 72% 51%;        /* red-600 */
+    --destructive: 0 74% 42%;        /* red-700 */
     --destructive-foreground: 0 0% 100%;
 
     --gradient-primary: linear-gradient(135deg, hsl(300 72% 40%), hsl(280 68% 42%));
@@ -53,6 +84,13 @@
     --foreground: 295 25% 96%;
     --card: 292 26% 12%;
     --card-foreground: 295 25% 96%;
+    --surface-raised: 292 24% 16%;
+    --shadow-card: inset 0 1px 0 hsl(295 40% 96% / 0.04), 0 1px 2px hsl(290 40% 2% / 0.5);
+    --shadow-raised: inset 0 1px 0 hsl(295 40% 96% / 0.06), 0 24px 48px -20px hsl(290 60% 2% / 0.8);
+    --paper: 295 16% 88%;
+    --paper-foreground: 290 30% 12%;
+    --paper-line: 293 10% 70%;
+    --paper-mark: 298 70% 76%;
     --popover: 292 26% 12%;
     --popover-foreground: 295 25% 96%;
     --muted: 292 20% 18%;
@@ -62,7 +100,7 @@
     --accent: 292 20% 18%;
     --accent-foreground: 295 25% 96%;
     --border: 292 18% 20%;
-    --input: 292 14% 28%;
+    --input: 292 12% 48%;
 
     --primary: 292 91% 73%;          /* 400 step */
     --primary-foreground: 292 28% 8%;
@@ -72,7 +110,7 @@
     --success-foreground: 292 28% 8%;
     --warning: 43 96% 56%;           /* amber-400 */
     --warning-foreground: 292 28% 8%;
-    --destructive: 0 84% 60%;        /* red-500 */
+    --destructive: 0 91% 71%;        /* red-400 */
     --destructive-foreground: 292 28% 8%;
 
     --gradient-primary: linear-gradient(135deg, hsl(292 91% 73%), hsl(275 85% 72%));

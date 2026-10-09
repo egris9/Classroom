@@ -10,7 +10,30 @@ export default {
         sans: ["Public Sans", "ui-sans-serif", "system-ui", "sans-serif"],
         display: ["Bricolage Grotesque", "Public Sans", "ui-sans-serif", "system-ui", "sans-serif"],
       },
+      fontSize: {
+        display: ["var(--text-display)", { lineHeight: "var(--leading-display)", letterSpacing: "var(--tracking-display)" }],
+        title: ["var(--text-title)", { lineHeight: "var(--leading-title)", letterSpacing: "var(--tracking-title)" }],
+        heading: ["var(--text-heading)", { lineHeight: "var(--leading-heading)", letterSpacing: "var(--tracking-heading)" }],
+      },
+      lineHeight: {
+        reading: "var(--leading-reading)",
+      },
+      // `shadow` is the resting card shadow, `shadow-raised` the floating one. No `card` key: `shadow-card` already
+      // means "shadow colour: card".
+      boxShadow: {
+        DEFAULT: "var(--shadow-card)",
+        raised: "var(--shadow-raised)",
+      },
       colors: {
+        surface: {
+          raised: "hsl(var(--surface-raised))",
+        },
+        paper: {
+          DEFAULT: "hsl(var(--paper))",
+          foreground: "hsl(var(--paper-foreground))",
+          line: "hsl(var(--paper-line))",
+          mark: "hsl(var(--paper-mark))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

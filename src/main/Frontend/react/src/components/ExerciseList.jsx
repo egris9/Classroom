@@ -11,7 +11,7 @@ export function ExerciseList({ set, badge }) {
                     {badge}
                 </div>
                 <DemoNotice item={set} />
-                <ol className="list-decimal space-y-3 pl-5 text-sm">
+                <ol className="list-decimal space-y-3 pl-5 text-sm leading-reading">
                     {(set.exercises ?? []).map((exercise) => (
                         <li key={exercise.question}>
                             <p dir="auto">{exercise.question}</p>
