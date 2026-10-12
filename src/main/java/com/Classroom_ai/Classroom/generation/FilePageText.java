@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.Length;
 
 /** The text of one page of a CourseFile, kept so the PDF is read once. Pages are numbered from 1. */
 @Getter
@@ -27,8 +28,9 @@ public class FilePageText {
     @Column(name = "page_number", nullable = false)
     private int pageNumber;
 
+    /** The length is spelled out: MySQL would otherwise be given its 255-byte text type. */
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, length = Length.LONG32)
     private String text;
 
     @Column(name = "by_ocr", nullable = false)
