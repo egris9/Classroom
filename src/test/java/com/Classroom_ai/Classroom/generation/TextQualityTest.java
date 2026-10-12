@@ -70,6 +70,26 @@ class TextQualityTest {
     }
 
     @Test
+    void arabicThatNamesThingsWithSingleLettersIsReadable() {
+        String maths = "نعتبر الدالة د المعرفة على ح بـ: د(س) = س² + 2س\n".repeat(10);
+        String letteredList = ("أ - عرف صلح الحديبية وفتح مكة\nب - اذكر تاريخ حدوثهما\nج - استخلص بعض العبر\n"
+                + "د - حدد الإشكالية\n").repeat(5);
+        String physics = ("نرمز للقوة بالحرف ق وللكتلة بالحرف ك وللتسارع بالحرف ت فيكون ق = ك × ت حيث ك بالكيلوغرام و ت "
+                + "بالمتر على مربع الثانية\n").repeat(5);
+
+        assertThat(TextQuality.looksBroken(maths)).isFalse();
+        assertThat(TextQuality.looksBroken(letteredList)).isFalse();
+        assertThat(TextQuality.looksBroken(physics)).isFalse();
+    }
+
+    @Test
+    void arabicWithRunsOfLooseLettersBetweenWholeWordsIsBroken() {
+        String partlyCut = "علوم ا ل ه التربية ا س ل ا الأولى باك ه ي ة الإسلامية\n".repeat(10);
+
+        assertThat(TextQuality.looksBroken(partlyCut)).isTrue();
+    }
+
+    @Test
     void textUnderTwoHundredCharactersIsNeverJudged() {
         assertThat(TextQuality.looksBroken("�".repeat(199))).isFalse();
         assertThat(TextQuality.looksBroken("� ".repeat(199))).isFalse();

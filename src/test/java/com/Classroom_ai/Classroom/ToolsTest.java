@@ -285,6 +285,17 @@ class ToolsTest extends ToolsTestSupport {
     }
 
     @Test
+    void aGarbledPdfSpendsTheVisitorsOneTry() throws Exception {
+        doReturn("�\u0001x ".repeat(100)).when(pdfText).extract(any(byte[].class));
+        String ip = newIp();
+        upload("/api/tools/summaries", ip, null, pdfBytes(LESSON)).andExpect(status().isUnprocessableEntity());
+
+        summarise(ip, LESSON)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("TRIAL_USED"));
+    }
+
+    @Test
     void aScanSentToToolsIsNeverGivenToOcr() throws Exception {
         upload("/api/tools/summaries", newIp(), bearer(newUser("Signed")), pdfBytes(null, null))
                 .andExpect(status().isUnprocessableEntity())

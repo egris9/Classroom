@@ -6,9 +6,10 @@ import java.lang.Character.UnicodeScript;
  * Tells real text from what a PDF gives when its fonts do not say which letters they draw: characters that stand for
  * nothing, or Arabic words cut into single letters. A model given such text invents its answer.
  *
- * <p>The thresholds come from the three PDFs in {@code eval/PDFs}: the garbled Arabic one measured 33% junk
- * characters and 42% single-letter Arabic words, the two readable ones 0% of both. Each threshold is at least a
- * factor of two away from every measured value.
+ * <p>The thresholds come from the three PDFs in {@code eval/PDFs}. The garbled Arabic one measured 33% junk
+ * characters, and 5.7% of its Arabic words are single letters standing in a row of three or more. The two readable
+ * ones, the same Arabic PDF read by OCR, and Arabic written with single-letter variables and list marks all measured
+ * 0% of both. Each threshold is at least a factor of two away from every measured value.
  */
 public final class TextQuality {
 
@@ -16,7 +17,8 @@ public final class TextQuality {
     private static final int MIN_JUDGED_CHARS = 200;
     /** A deck with symbol-font bullets is a few percent private-use characters and must stay readable. */
     private static final double MAX_JUNK_SHARE = 0.10;
-    private static final double MAX_SINGLE_LETTER_ARABIC_WORDS = 0.20;
+    private static final int LOOSE_LETTER_ROW = 3;
+    private static final double MAX_LOOSE_ARABIC_LETTERS = 0.02;
 
     private TextQuality() {
     }
@@ -76,19 +78,27 @@ public final class TextQuality {
         return UnicodeScript.of(c) == UnicodeScript.ARABIC;
     }
 
-    /** Real Arabic joins its letters into words; only a few words ("و") are a single letter. */
+    /**
+     * Real Arabic joins its letters into words. A single letter does stand alone as a word ("و"), as the name of a
+     * variable or as the mark of a list item, but hardly ever three in a row; garbled text is full of such rows.
+     */
     private static boolean arabicWordsAreCutUp(String text) {
         long arabicWords = 0;
-        long singleLetter = 0;
+        long looseLetters = 0;
+        long row = 0;
         for (String word : text.split("\\s+")) {
-            long letters = word.codePoints().filter(Character::isLetter).count();
-            if (word.codePoints().anyMatch(c -> Character.isLetter(c) && isArabic(c))) {
+            boolean arabic = word.codePoints().anyMatch(c -> Character.isLetter(c) && isArabic(c));
+            if (arabic) {
                 arabicWords++;
-                if (letters == 1) {
-                    singleLetter++;
-                }
+            }
+            if (arabic && word.codePoints().filter(Character::isLetter).count() == 1) {
+                row++;
+            } else {
+                looseLetters += row >= LOOSE_LETTER_ROW ? row : 0;
+                row = 0;
             }
         }
-        return arabicWords > 0 && singleLetter > MAX_SINGLE_LETTER_ARABIC_WORDS * arabicWords;
+        looseLetters += row >= LOOSE_LETTER_ROW ? row : 0;
+        return looseLetters > MAX_LOOSE_ARABIC_LETTERS * arabicWords;
     }
 }
