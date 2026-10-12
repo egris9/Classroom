@@ -65,18 +65,23 @@ abstract class GenerationTestSupport {
         return "Bearer " + jwt.generateToken(user);
     }
 
-    /** {@code text} drawn on one page, or a blank page when null (what a scan without OCR looks like). */
-    static byte[] pdfBytes(String text) throws Exception {
+    /**
+     * One PDF page per argument, each with its text drawn on it. A null argument is a blank page (what a scan without
+     * OCR looks like), and {@code pdfBytes(null)} is one blank page.
+     */
+    static byte[] pdfBytes(String... pages) throws Exception {
         try (PDDocument doc = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            PDPage page = new PDPage();
-            doc.addPage(page);
-            if (text != null) {
-                try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
-                    stream.beginText();
-                    stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
-                    stream.newLineAtOffset(50, 700);
-                    stream.showText(text);
-                    stream.endText();
+            for (String text : pages == null ? new String[]{null} : pages) {
+                PDPage page = new PDPage();
+                doc.addPage(page);
+                if (text != null) {
+                    try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+                        stream.beginText();
+                        stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+                        stream.newLineAtOffset(50, 700);
+                        stream.showText(text);
+                        stream.endText();
+                    }
                 }
             }
             doc.save(out);
