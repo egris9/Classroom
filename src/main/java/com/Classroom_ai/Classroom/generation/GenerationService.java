@@ -3,7 +3,6 @@ package com.Classroom_ai.Classroom.generation;
 import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.course.CourseFile;
 import com.Classroom_ai.Classroom.course.CourseFileService;
-import com.Classroom_ai.Classroom.material.Materials;
 import com.Classroom_ai.Classroom.material.StoredFileMissingException;
 import com.Classroom_ai.Classroom.membership.Membership;
 import com.Classroom_ai.Classroom.membership.Role;
@@ -52,8 +51,7 @@ public class GenerationService {
     private final ExerciseSetRepository exerciseSets;
     private final CourseFileService fileService;
     private final Membership membership;
-    private final Materials materials;
-    private final PdfText pdfText;
+    private final FileText fileText;
     private final TextGeneration textGeneration;
     private final ObjectMapper mapper;
     private final Duration timeout;
@@ -64,16 +62,15 @@ public class GenerationService {
     });
 
     public GenerationService(SummaryRepository summaries, ExerciseSetRepository exerciseSets,
-                             CourseFileService fileService, Membership membership, Materials materials,
-                             PdfText pdfText, TextGeneration textGeneration, ObjectMapper mapper,
+                             CourseFileService fileService, Membership membership, FileText fileText,
+                             TextGeneration textGeneration, ObjectMapper mapper,
                              @Value("${generation.timeout:120s}") Duration timeout) {
         this.timeout = timeout;
         this.summaries = summaries;
         this.exerciseSets = exerciseSets;
         this.fileService = fileService;
         this.membership = membership;
-        this.materials = materials;
-        this.pdfText = pdfText;
+        this.fileText = fileText;
         this.textGeneration = textGeneration;
         this.mapper = mapper;
     }
@@ -231,7 +228,7 @@ public class GenerationService {
     }
 
     private String textOf(CourseFile file) {
-        return pdfText.extract(materials.open(file));
+        return fileText.textOf(file);
     }
 
     private void fail(Generated item, RuntimeException e) {

@@ -61,7 +61,7 @@ final class EvalRunner {
         String base = fileName.substring(0, fileName.length() - ".pdf".length());
         String text;
         try {
-            text = pdfText.extract(new FileSystemResource(pdf));
+            text = pdfText.read(new FileSystemResource(pdf)).text();
         } catch (GenerationFailure failure) {
             String report = "FAILED " + failure.code() + ": " + failure.getMessage();
             Files.writeString(outDir.resolve(base + ".summary.txt"), report, StandardCharsets.UTF_8);

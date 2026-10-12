@@ -4,6 +4,7 @@ const NEXT_STEPS = {
     UNSUPPORTED_MEDIA_TYPE: "Choose a PDF file.",
     VALIDATION_FAILED: "Paste some text or choose a PDF.",
     NO_TEXT: "This PDF has no text that can be read. Paste the text instead.",
+    UNREADABLE_TEXT: "Paste the text instead.",
     MODEL_UNAVAILABLE: "Try again in a few minutes.",
     MODEL_TIMEOUT: "Try again with a shorter text.",
     NETWORK: "Check your connection and try again.",

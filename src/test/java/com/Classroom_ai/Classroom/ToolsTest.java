@@ -2,6 +2,8 @@ package com.Classroom_ai.Classroom;
 
 import com.Classroom_ai.Classroom.generation.Exercise;
 import com.Classroom_ai.Classroom.generation.FakeTextGeneration;
+import com.Classroom_ai.Classroom.generation.Ocr;
+import com.Classroom_ai.Classroom.generation.PdfText;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,8 +16,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.awt.image.BufferedImage;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +30,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.emptyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -56,6 +62,22 @@ class ToolsTest extends ToolsTestSupport {
         }
     }
 
+    /** An OCR engine that is switched on and counts the pages it is given: the AI tools must never give it one. */
+    static class CountingOcr implements Ocr {
+        final AtomicInteger calls = new AtomicInteger();
+
+        @Override
+        public boolean available() {
+            return true;
+        }
+
+        @Override
+        public String read(BufferedImage page) {
+            calls.incrementAndGet();
+            return "Read from the image of a page.";
+        }
+    }
+
     @TestConfiguration
     static class Counting {
         @Bean
@@ -63,14 +85,23 @@ class ToolsTest extends ToolsTestSupport {
         CountingTextGeneration countingTextGeneration() {
             return new CountingTextGeneration();
         }
+
+        @Bean
+        @Primary
+        CountingOcr countingOcr() {
+            return new CountingOcr();
+        }
     }
 
     @Autowired CountingTextGeneration model;
+    @Autowired CountingOcr ocr;
     @Autowired ObjectMapper mapper;
+    @MockitoSpyBean PdfText pdfText;
 
     @BeforeEach
     void resetCount() {
         model.calls.set(0);
+        ocr.calls.set(0);
     }
 
     private ResultActions send(String path, String ip, String bearer, String text) throws Exception {
@@ -240,6 +271,38 @@ class ToolsTest extends ToolsTestSupport {
 
         assertThat(model.calls).hasValue(0);
         summarise(ip, LESSON).andExpect(status().isOk());
+    }
+
+    @Test
+    void pdfWithGarbledTextIs422UnreadableText() throws Exception {
+        doReturn("�\u0001x ".repeat(100)).when(pdfText).extract(any(byte[].class));
+
+        upload("/api/tools/summaries", newIp(), null, pdfBytes(LESSON))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("UNREADABLE_TEXT"));
+
+        assertThat(model.calls).hasValue(0);
+    }
+
+    @Test
+    void aGarbledPdfSpendsTheVisitorsOneTry() throws Exception {
+        doReturn("�\u0001x ".repeat(100)).when(pdfText).extract(any(byte[].class));
+        String ip = newIp();
+        upload("/api/tools/summaries", ip, null, pdfBytes(LESSON)).andExpect(status().isUnprocessableEntity());
+
+        summarise(ip, LESSON)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("TRIAL_USED"));
+    }
+
+    @Test
+    void aScanSentToToolsIsNeverGivenToOcr() throws Exception {
+        upload("/api/tools/summaries", newIp(), bearer(newUser("Signed")), pdfBytes(null, null))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("NO_TEXT"));
+
+        assertThat(ocr.calls).hasValue(0);
+        assertThat(model.calls).hasValue(0);
     }
 
     @Test

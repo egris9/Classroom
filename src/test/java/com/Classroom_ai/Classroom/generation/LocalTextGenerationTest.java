@@ -63,6 +63,56 @@ class LocalTextGenerationTest {
         assertThat(system).contains("in your own words").contains("Do not copy sentences").contains("no ellipses");
     }
 
+    private static final String ARABIC = "صلح الحديبية هو اتفاق عقد بين المسلمين وقريش في السنة السادسة للهجرة";
+
+    private String system(int request) {
+        return server.requests().get(request).path("messages").path(0).path("content").asText();
+    }
+
+    @Test
+    void anArabicTextIsSummarisedWithItsLanguageNamed() {
+        adapter().summarize(ARABIC);
+
+        assertThat(system(0)).contains("answer in Arabic");
+    }
+
+    @Test
+    void arabicReadFromPageImagesWithStrayLatinWordsStillNamesTheLanguage() {
+        adapter().summarize("@ AlloSchool 9/13/2026\n" + ARABIC + " BE abo\nhttps://www.alloschool.com/element/1/doc");
+
+        assertThat(system(0)).contains("answer in Arabic");
+    }
+
+    @Test
+    void aTextThatIsNotArabicGetsNoLanguageNamed() {
+        adapter().summarize("Photosynthesis turns light into sugar.");
+        adapter().summarize("La dérivée d'une fonction mesure sa variation. Le mot arabe صلح veut dire paix.");
+
+        assertThat(system(0)).doesNotContain("Arabic");
+        assertThat(system(1)).doesNotContain("Arabic");
+    }
+
+    @Test
+    void everyRequestOfALongArabicSummaryNamesTheLanguage() {
+        server.replyWith(user -> "S");
+
+        adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize((ARABIC + " ").repeat(8));
+
+        assertThat(server.requests().size()).isGreaterThan(2);
+        for (int i = 0; i < server.requests().size(); i++) {
+            assertThat(system(i)).as("request %s", i).contains("answer in Arabic");
+        }
+    }
+
+    @Test
+    void exercisesFromAnArabicTextAreAskedForInArabic() {
+        server.replyWith(LocalTextGenerationTest::asManyAsAsked);
+
+        adapter().generateExercises(ARABIC, 5);
+
+        assertThat(system(0)).contains("answer in Arabic");
+    }
+
     @Test
     void requests_switch_the_model_thinking_off() {
         adapter().summarize("Some text.");
