@@ -11,6 +11,7 @@ import org.springframework.core.io.Resource;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
@@ -124,6 +125,25 @@ class PdfTextOcrTest {
                 .hasMessage("This PDF has more pages than can be read from their images.");
         assertThat(ocr.seen).isEmpty();
         assertThat(twoPagesAtMost.read(pdf(null, null)).pages()).hasSize(2);
+    }
+
+    @Test
+    void aFileThatTakesLongerThanTheWholeFileTimeoutStopsBeforeItsNextPage() throws IOException {
+        StubOcr slow = new StubOcr(call -> {
+            try {
+                Thread.sleep(60);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return READ + call;
+        });
+        PdfText hurried = new PdfText(slow, 72, 80, Duration.ofMillis(30));
+
+        assertThatThrownBy(() -> hurried.read(pdf(null, null, null)))
+                .isInstanceOfSatisfying(GenerationFailure.class,
+                        failure -> assertThat(failure.code()).isEqualTo("TOO_LONG"))
+                .hasMessage("This PDF takes too long to read from the images of its pages.");
+        assertThat(slow.seen).hasSize(1);
     }
 
     @Test

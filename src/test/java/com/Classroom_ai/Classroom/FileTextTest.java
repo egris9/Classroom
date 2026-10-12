@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntFunction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -128,30 +129,84 @@ class FileTextTest extends GenerationTestSupport {
         assertFalse(ocr.available());
     }
 
+    /** An OCR engine that answers from a function of the call number (from 1). */
+    static class CountingOcr implements Ocr {
+        final AtomicInteger calls = new AtomicInteger();
+        private final IntFunction<String> answer;
+
+        CountingOcr(IntFunction<String> answer) {
+            this.answer = answer;
+        }
+
+        @Override
+        public boolean available() {
+            return true;
+        }
+
+        @Override
+        public String read(BufferedImage page) {
+            return answer.apply(calls.incrementAndGet());
+        }
+    }
+
+    private FileText readingWith(Ocr ocr) {
+        return new FileText(pageTexts, files, materials, new PdfText(ocr, 72, 80));
+    }
+
     @Test
     void pagesReadByOcrAreStoredSoASecondCallDoesNoOcr() throws Exception {
         CourseFile file = stored(course(), null, null);
-        AtomicInteger calls = new AtomicInteger();
-        Ocr counting = new Ocr() {
-            @Override
-            public boolean available() {
-                return true;
-            }
-
-            @Override
-            public String read(BufferedImage page) {
-                return "Read from the image of page " + calls.incrementAndGet();
-            }
-        };
-        FileText reading = new FileText(pageTexts, files, materials, new PdfText(counting, 72, 80));
+        CountingOcr counting = new CountingOcr(call -> "Read from the image of page " + call);
+        FileText reading = readingWith(counting);
 
         List<String> first = reading.pagesOf(file);
 
         assertEquals(List.of("Read from the image of page 1", "Read from the image of page 2"), first);
         assertEquals(first, reading.pagesOf(file));
         assertEquals(first, fileText.pagesOf(file));
-        assertEquals(2, calls.get());
+        assertEquals(2, counting.calls.get());
         assertTrue(pageTexts.findByFileIdOrderByPageNumber(file.getId()).stream().allMatch(FilePageText::isByOcr));
+    }
+
+    @Test
+    void aScanOcrCannotReadIsNotGivenToOcrAgainOnTheNextCall() throws Exception {
+        CourseFile file = stored(course(), null, null);
+        CountingOcr readsNothing = new CountingOcr(call -> "");
+        FileText reading = readingWith(readsNothing);
+
+        assertEquals("NO_TEXT", assertThrows(GenerationFailure.class, () -> reading.pagesOf(file)).code());
+        GenerationFailure second = assertThrows(GenerationFailure.class, () -> reading.pagesOf(file));
+
+        assertEquals("NO_TEXT", second.code());
+        assertEquals("This PDF has no text to work from. It may be a scan.", second.getMessage());
+        assertEquals(2, readsNothing.calls.get());
+    }
+
+    @Test
+    void aReadingThatFailedOnOnePageIsTriedAgain() throws Exception {
+        CourseFile file = stored(course(), null, null);
+        CountingOcr failsOnce = new CountingOcr(call -> {
+            if (call == 1) {
+                throw new GenerationFailure("OCR_FAILED", "A page of this PDF could not be read.");
+            }
+            return "Read on call " + call;
+        });
+        FileText reading = readingWith(failsOnce);
+
+        assertEquals("OCR_FAILED", assertThrows(GenerationFailure.class, () -> reading.pagesOf(file)).code());
+
+        assertEquals(List.of("Read on call 2", "Read on call 3"), reading.pagesOf(file));
+    }
+
+    @Test
+    void aScanThatFailedWithOcrOffIsReadOnceTheServerRunsWithOcrOn() throws Exception {
+        CourseFile file = stored(course(), null, null);
+        assertEquals("NO_TEXT", assertThrows(GenerationFailure.class, () -> fileText.pagesOf(file)).code());
+
+        FileText afterRestart = readingWith(new CountingOcr(call -> "Read from the image of page " + call));
+
+        assertEquals(List.of("Read from the image of page 1", "Read from the image of page 2"),
+                afterRestart.pagesOf(file));
     }
 
     @Test
