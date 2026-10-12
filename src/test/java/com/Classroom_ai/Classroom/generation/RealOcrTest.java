@@ -11,9 +11,13 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -80,6 +84,36 @@ class RealOcrTest {
                 .hasMessage("A page of this PDF could not be read.");
     }
 
+    /** The files the adapter has made for its pages and not removed. */
+    private static Set<String> pageFilesInTheTempFolder() throws IOException {
+        try (Stream<Path> files = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+            return files.map(file -> file.getFileName().toString())
+                    .filter(name -> name.startsWith("ocr-page-")).collect(Collectors.toSet());
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OCR_COMMAND", matches = ".+")
+    void aPageThatTimesOutLeavesNoFilesBehind() throws IOException {
+        Set<String> before = pageFilesInTheTempFolder();
+        TesseractOcr hurried = tesseract(LANGUAGES, Duration.ofMillis(1));
+
+        assertThatThrownBy(() -> hurried.read(imageOf("Too slow to be read in a millisecond")))
+                .isInstanceOf(GenerationFailure.class);
+
+        assertThat(pageFilesInTheTempFolder()).isSubsetOf(before);
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "OCR_COMMAND", matches = ".+")
+    void aPageThatIsReadLeavesNoFilesBehind() throws IOException {
+        Set<String> before = pageFilesInTheTempFolder();
+
+        tesseract(LANGUAGES, A_MINUTE).read(imageOf("Read and cleaned up after"));
+
+        assertThat(pageFilesInTheTempFolder()).isSubsetOf(before);
+    }
+
     @Test
     @EnabledIfEnvironmentVariable(named = "OCR_COMMAND", matches = ".+")
     void aLanguageThatIsNotInstalledRefusesToStart() {
@@ -107,5 +141,7 @@ class RealOcrTest {
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("generation.ocr.dpi");
         assertThatThrownBy(() -> new PdfText(new NoOcr(), 300, 0))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("generation.ocr.max-pages");
+        assertThatThrownBy(() -> new PdfText(new NoOcr(), 300, 80, Duration.ZERO))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("generation.ocr.timeout");
     }
 }

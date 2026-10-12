@@ -31,6 +31,9 @@ public class TesseractOcr implements Ocr {
 
     private static final Logger log = LoggerFactory.getLogger(TesseractOcr.class);
     private static final Duration LIST_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration STOP_TIMEOUT = Duration.ofSeconds(5);
+    private static final int DELETE_ATTEMPTS = 20;
+    private static final Duration DELETE_PAUSE = Duration.ofMillis(100);
 
     private final String command;
     private final String languages;
@@ -145,20 +148,43 @@ public class TesseractOcr implements Ocr {
                 cause);
     }
 
+    /** Waits for a killed program to be gone: until then it holds its files open and they cannot be deleted. */
     private static void stop(Process process) {
-        if (process != null && process.isAlive()) {
-            process.destroyForcibly();
+        if (process == null || !process.isAlive()) {
+            return;
+        }
+        try {
+            process.destroyForcibly().waitFor(STOP_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
+    /** Tries for a while: Windows keeps the files of a killed program open for a moment after it is gone. */
     private static void delete(Path file) {
         if (file == null) {
             return;
         }
+        for (int attempt = 1; ; attempt++) {
+            try {
+                Files.deleteIfExists(file);
+                return;
+            } catch (IOException e) {
+                if (attempt == DELETE_ATTEMPTS || !pause()) {
+                    log.warn("Could not delete the temporary OCR file {}", file.getFileName(), e);
+                    return;
+                }
+            }
+        }
+    }
+
+    private static boolean pause() {
         try {
-            Files.deleteIfExists(file);
-        } catch (IOException e) {
-            log.debug("Could not delete a temporary OCR file", e);
+            Thread.sleep(DELETE_PAUSE.toMillis());
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 }
