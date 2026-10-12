@@ -2,9 +2,11 @@ package com.Classroom_ai.Classroom;
 
 import com.Classroom_ai.Classroom.course.CourseFile;
 import com.Classroom_ai.Classroom.course.CourseFileRepository;
+import com.Classroom_ai.Classroom.generation.FilePageText;
 import com.Classroom_ai.Classroom.generation.FilePageTextRepository;
 import com.Classroom_ai.Classroom.generation.FileText;
 import com.Classroom_ai.Classroom.generation.GenerationFailure;
+import com.Classroom_ai.Classroom.generation.Ocr;
 import com.Classroom_ai.Classroom.generation.PdfText;
 import com.Classroom_ai.Classroom.material.Materials;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.Resource;
 
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -22,7 +25,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,6 +40,7 @@ class FileTextTest extends GenerationTestSupport {
     @Autowired FilePageTextRepository pageTexts;
     @Autowired CourseFileRepository files;
     @Autowired Materials materials;
+    @Autowired Ocr ocr;
 
     /** PDFBox, counting how often a PDF is opened for its text, and slow enough for two callers to overlap. */
     static class CountingPdfText extends PdfText {
@@ -115,6 +121,37 @@ class FileTextTest extends GenerationTestSupport {
 
         assertEquals("UNREADABLE_TEXT", failure.code());
         assertEquals(0, pageTexts.countByFileId(file.getId()));
+    }
+
+    @Test
+    void ocrIsOffUnlessItIsConfigured() {
+        assertFalse(ocr.available());
+    }
+
+    @Test
+    void pagesReadByOcrAreStoredSoASecondCallDoesNoOcr() throws Exception {
+        CourseFile file = stored(course(), null, null);
+        AtomicInteger calls = new AtomicInteger();
+        Ocr counting = new Ocr() {
+            @Override
+            public boolean available() {
+                return true;
+            }
+
+            @Override
+            public String read(BufferedImage page) {
+                return "Read from the image of page " + calls.incrementAndGet();
+            }
+        };
+        FileText reading = new FileText(pageTexts, files, materials, new PdfText(counting, 72, 80));
+
+        List<String> first = reading.pagesOf(file);
+
+        assertEquals(List.of("Read from the image of page 1", "Read from the image of page 2"), first);
+        assertEquals(first, reading.pagesOf(file));
+        assertEquals(first, fileText.pagesOf(file));
+        assertEquals(2, calls.get());
+        assertTrue(pageTexts.findByFileIdOrderByPageNumber(file.getId()).stream().allMatch(FilePageText::isByOcr));
     }
 
     @Test

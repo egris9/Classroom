@@ -54,10 +54,14 @@ public final class TextQuality {
     /** The text, or {@code UNREADABLE_TEXT} when it is garbled. */
     public static String requireReadable(String text) {
         if (looksBroken(text)) {
-            throw new GenerationFailure("UNREADABLE_TEXT",
-                    "The text of this PDF cannot be read correctly. Its fonts hide which letters they draw.");
+            throw unreadable();
         }
         return text;
+    }
+
+    static GenerationFailure unreadable() {
+        return new GenerationFailure("UNREADABLE_TEXT",
+                "The text of this PDF cannot be read correctly. Its fonts hide which letters they draw.");
     }
 
     /** The replacement character, a private-use character, or a control character other than tab and line ends. */
