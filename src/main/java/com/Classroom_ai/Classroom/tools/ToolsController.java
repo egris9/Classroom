@@ -9,6 +9,7 @@ import com.Classroom_ai.Classroom.auth.UserService;
 import com.Classroom_ai.Classroom.generation.GenerationService;
 import com.Classroom_ai.Classroom.generation.PdfText;
 import com.Classroom_ai.Classroom.generation.TextGeneration;
+import com.Classroom_ai.Classroom.generation.TextQuality;
 import com.Classroom_ai.Classroom.material.FileTooLargeException;
 import com.Classroom_ai.Classroom.material.Materials;
 import jakarta.servlet.http.HttpServletRequest;
@@ -161,7 +162,7 @@ public class ToolsController {
         public String text(Limits limits) {
             String text;
             try {
-                text = pdfText.extract(file.getBytes());
+                text = TextQuality.requireReadable(pdfText.extract(file.getBytes()));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

@@ -2,6 +2,7 @@ package com.Classroom_ai.Classroom;
 
 import com.Classroom_ai.Classroom.generation.Exercise;
 import com.Classroom_ai.Classroom.generation.FakeTextGeneration;
+import com.Classroom_ai.Classroom.generation.PdfText;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
@@ -26,6 +28,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.emptyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -67,6 +71,7 @@ class ToolsTest extends ToolsTestSupport {
 
     @Autowired CountingTextGeneration model;
     @Autowired ObjectMapper mapper;
+    @MockitoSpyBean PdfText pdfText;
 
     @BeforeEach
     void resetCount() {
@@ -240,6 +245,17 @@ class ToolsTest extends ToolsTestSupport {
 
         assertThat(model.calls).hasValue(0);
         summarise(ip, LESSON).andExpect(status().isOk());
+    }
+
+    @Test
+    void pdfWithGarbledTextIs422UnreadableText() throws Exception {
+        doReturn("�\u0001x ".repeat(100)).when(pdfText).extract(any(byte[].class));
+
+        upload("/api/tools/summaries", newIp(), null, pdfBytes(LESSON))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("UNREADABLE_TEXT"));
+
+        assertThat(model.calls).hasValue(0);
     }
 
     @Test

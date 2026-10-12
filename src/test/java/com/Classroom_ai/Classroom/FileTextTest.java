@@ -101,6 +101,23 @@ class FileTextTest extends GenerationTestSupport {
     }
 
     @Test
+    void garbledTextFailsUnreadableAndStoresNothing() throws Exception {
+        CourseFile file = stored(course(), "What PDFBox finds is replaced below");
+        PdfText garbled = new PdfText() {
+            @Override
+            public List<String> pages(Resource pdf) {
+                return List.of("�\u0001x ".repeat(100), "�\u0001x ".repeat(100));
+            }
+        };
+
+        GenerationFailure failure = assertThrows(GenerationFailure.class,
+                () -> new FileText(pageTexts, files, materials, garbled).pagesOf(file));
+
+        assertEquals("UNREADABLE_TEXT", failure.code());
+        assertEquals(0, pageTexts.countByFileId(file.getId()));
+    }
+
+    @Test
     void twoThreadsAskingAtOnceReadThePdfOnce() throws Exception {
         CourseFile file = stored(course(), "Shared page");
         CountingPdfText counting = new CountingPdfText();

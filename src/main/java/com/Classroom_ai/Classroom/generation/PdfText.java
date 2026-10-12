@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Pulls the text out of a PDF, page by page. A scan without a text layer has none, and fails with {@code NO_TEXT}. */
+/**
+ * Pulls the text out of a PDF, page by page. A scan without a text layer has none, and fails with {@code NO_TEXT}.
+ */
 @Component
 public class PdfText {
 
@@ -23,9 +25,11 @@ public class PdfText {
         }
     }
 
-    /** The text of a stored PDF, page by page. */
+    /** The text of a stored PDF, page by page. Text that is garbled fails with {@code UNREADABLE_TEXT}. */
     public PdfReading read(Resource pdf) {
-        return new PdfReading(requireText(pages(pdf)), false);
+        List<String> pages = requireText(pages(pdf));
+        TextQuality.requireReadable(PdfReading.join(pages));
+        return new PdfReading(pages, false);
     }
 
     /** How many pages a stored PDF has. Its text is not read. */
