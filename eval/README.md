@@ -21,3 +21,5 @@ Each PDF becomes, in `eval/out/` (also git-ignored):
 A failure is recorded and the run goes on with the next PDF.
 
 Optional variables: `GENERATION_TIMEOUT_SECONDS` (per request, default 300) and `GENERATION_CHUNK_CHARS` (default 10000).
+
+OCR is off in the eval unless `OCR_COMMAND` names the Tesseract program, for example `OCR_COMMAND="C:/Program Files/Tesseract-OCR/tesseract.exe"`. With it, a scan or a PDF with garbled text is read from its page images, as the app does with `GENERATION_OCR_ADAPTER=tesseract`; without it they are recorded as `NO_TEXT` and `UNREADABLE_TEXT`. `OCR_LANGUAGES` (default `ara+fra+eng`) and `OCR_DPI` (default 300) are optional.
