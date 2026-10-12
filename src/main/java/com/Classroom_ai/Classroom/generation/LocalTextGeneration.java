@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.Character.UnicodeScript;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -59,6 +60,8 @@ public class LocalTextGeneration implements TextGeneration {
     private static final String CHAT =
             "You are a study assistant for course material. Answer briefly, in the language the user writes in. "
                     + "If you do not know the answer, say that you do not know instead of inventing one.";
+    /** Left to itself the model answers Arabic text in English or French, so the language is named for it. */
+    private static final String ARABIC_TEXT = " The text is in Arabic, so answer in Arabic.";
     private static final String THINK_OPEN = "<think>";
     private static final String THINK_CLOSE = "</think>";
 
@@ -120,21 +123,34 @@ public class LocalTextGeneration implements TextGeneration {
     @Override
     public String summarize(String text) {
         List<String> chunks = chunksOf(text);
+        String language = languageOf(text);
         if (chunks.size() == 1) {
-            return summary(SUMMARISE, chunks.get(0));
+            return summary(SUMMARISE + language, chunks.get(0));
         }
         for (int round = 0; round < MAX_ROUNDS; round++) {
             List<String> summaries = new ArrayList<>();
             for (String chunk : chunks) {
-                summaries.add(summary(SUMMARISE_PART, chunk));
+                summaries.add(summary(SUMMARISE_PART + language, chunk));
             }
             String joined = String.join("\n\n", summaries);
             if (joined.length() <= chunkChars) {
-                return summary(COMBINE, joined);
+                return summary(COMBINE + language, joined);
             }
             chunks = split(joined);
         }
         throw new GenerationFailure("BAD_OUTPUT", "The model's summaries did not get shorter.");
+    }
+
+    /**
+     * What to add to a system prompt about the language of a document: its name when most of its letters are Arabic
+     * script, nothing otherwise. It is decided once for the whole document, so every request about it agrees.
+     */
+    private static String languageOf(String text) {
+        long letters = text.codePoints().filter(Character::isLetter).count();
+        long arabic = text.codePoints()
+                .filter(c -> Character.isLetter(c) && UnicodeScript.of(c) == UnicodeScript.ARABIC)
+                .count();
+        return arabic * 2 > letters ? ARABIC_TEXT : "";
     }
 
     /** The chunks of the text, or {@code TOO_LONG} if there are more than {@code generation.max-chunks}. */
@@ -184,6 +200,7 @@ public class LocalTextGeneration implements TextGeneration {
     @Override
     public List<Exercise> generateExercises(String text, int count) {
         List<String> chunks = chunksOf(text);
+        String language = languageOf(text);
         int[] perChunk = new int[chunks.size()];
         for (int i = 0; i < count; i++) {
             perChunk[(int) ((i + 0.5) * chunks.size() / count)]++;
@@ -191,16 +208,16 @@ public class LocalTextGeneration implements TextGeneration {
         List<Exercise> exercises = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             if (perChunk[i] > 0) {
-                exercises.addAll(exercisesFrom(chunks.get(i), perChunk[i]));
+                exercises.addAll(exercisesFrom(chunks.get(i), perChunk[i], language));
             }
         }
         return exercises;
     }
 
     /** Asks for JSON; if the reply is not the right shape, says so and asks once more. */
-    private List<Exercise> exercisesFrom(String chunk, int count) {
+    private List<Exercise> exercisesFrom(String chunk, int count, String language) {
         List<Map<String, String>> messages = new ArrayList<>(List.of(
-                message("system", EXERCISES),
+                message("system", EXERCISES + language),
                 message("user", "Write exactly " + count + " exercises from this text.\n\nText:\n" + chunk)));
         String reply = chat(messages);
         List<Exercise> exercises = parseExercises(reply, count);
