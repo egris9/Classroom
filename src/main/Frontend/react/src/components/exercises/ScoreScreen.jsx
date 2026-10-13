@@ -34,7 +34,7 @@ function useCountUp(target) {
  * "7 of 10", one line per question that jumps back to that step for review, and Try again. `answers` is the
  * player's array of `{ given, correct }`, with a hole for a question that was never checked.
  */
-export function ScoreScreen({ exercises, answers, onReview, onRetry }) {
+export function ScoreScreen({ exercises, answers, headingRef, onReview, onRetry }) {
     const { correct, total } = scoreOf(exercises, answers);
     const shown = useCountUp(correct);
     const percent = total === 0 ? 0 : (shown / total) * 100;
@@ -42,7 +42,13 @@ export function ScoreScreen({ exercises, answers, onReview, onRetry }) {
     return (
         <div className="space-y-5">
             <div className="space-y-3">
-                <h3 className="font-display text-heading font-semibold">Your score</h3>
+                <h3
+                    ref={headingRef}
+                    tabIndex={-1}
+                    className="rounded font-display text-heading font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    Your score
+                </h3>
                 {/* The number counts up for the eye; a screen reader gets the final one at once. */}
                 <p className="sr-only">{`${correct} of ${total}`}</p>
                 <p aria-hidden="true" className="font-display text-title font-semibold tabular-nums">

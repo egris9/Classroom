@@ -131,7 +131,7 @@ function OptionsFields({ onSubmit, busy }) {
 export function ExerciseOptionsForm({ open, onOpenChange, onSubmit, busy = false }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>New exercise set</DialogTitle>
                     <DialogDescription>Choose what the questions should be like.</DialogDescription>

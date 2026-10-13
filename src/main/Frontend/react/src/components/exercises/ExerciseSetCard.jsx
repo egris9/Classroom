@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { badgeVariants } from "@/components/ui/badge";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DemoNotice, PendingNotice, ResultFailure } from "@/components/SummaryCard";
@@ -30,6 +31,8 @@ function metaOf(set) {
  * status (from the AI tools) is a finished one.
  */
 export function ExerciseSetCard({ set, badge, collapsible = true, defaultOpen = true, className }) {
+    // Folding the card unmounts the player, so the answers given so far are kept here and handed back when it opens.
+    const [saved, setSaved] = useState([]);
     const playable = (set.status === undefined || set.status === "DONE") && (set.exercises ?? []).length > 0;
     return (
         <CollapsibleCard
@@ -42,7 +45,16 @@ export function ExerciseSetCard({ set, badge, collapsible = true, defaultOpen = 
         >
             <DemoNotice item={set} />
             <PendingNotice item={set} />
-            {playable && <ExercisePlayer key={set.id} exercises={set.exercises} marking="self" />}
+            {playable && (
+                <ExercisePlayer
+                    key={set.id}
+                    exercises={set.exercises}
+                    marking="self"
+                    initialAnswers={saved}
+                    onAnswer={(index, answer) => setSaved((current) => Object.assign([...current], { [index]: answer }))}
+                    onRetry={() => setSaved([])}
+                />
+            )}
             <ResultFailure item={set} />
         </CollapsibleCard>
     );

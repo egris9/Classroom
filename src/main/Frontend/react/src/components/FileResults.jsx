@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { SummaryCard } from "@/components/SummaryCard";
 import { getPref, setPref } from "@/lib/prefs";
 import { DEFAULT_SUMMARY_LEVEL, isSummaryLevel, SUMMARY_LEVELS } from "@/lib/summaryLevels";
+import { getUser } from "../api/auth.js";
 import { listExerciseSets, listSummaries, requestExerciseSet, requestSummary } from "../api/generation.js";
 
 const POLL_MS = 2000;
@@ -79,8 +80,10 @@ export function FileResults({ file, role }) {
         return () => clearTimeout(timer);
     }, [pending, summaries, exerciseSets, refresh]);
 
-    // The server refuses a second request of a kind while one is pending (409), so the button waits too.
-    const exercisesPending = (exerciseSets ?? []).some((set) => set.status === "PENDING");
+    // The server refuses a second request of a kind while one of the caller's own is pending (409), so the button waits
+    // too. A published set that is pending belongs to a Teacher and does not count against a Student.
+    const myId = getUser()?.id;
+    const exercisesPending = (exerciseSets ?? []).some((set) => set.status === "PENDING" && set.authorId === myId);
 
     /** Resolves true when the request was accepted; a refusal is shown as a toast. */
     const request = async (action, label) => {

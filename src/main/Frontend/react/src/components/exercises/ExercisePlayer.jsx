@@ -16,9 +16,9 @@ const firstOpenStep = (exercises, answers) => {
  * `marking` is "self" for now: multiple choice and true or false are marked by comparing, and an open answer by the
  * Student ("I had it", "Not yet"). `initialAnswers` is an array of `{ given, correct }` with a hole for a question
  * not answered yet. `onAnswer(index, answer)` fires when a step is checked, `onFinish(answers)` when the score is
- * asked for. A set with no exercises renders nothing. Key the player by the set, so a new set starts afresh.
+ * asked for, and `onRetry()` when the Student starts again. A set with no exercises renders nothing. Key the player by the set, so a new set starts afresh.
  */
-export function ExercisePlayer({ exercises, marking = "self", initialAnswers, onAnswer, onFinish }) {
+export function ExercisePlayer({ exercises, marking = "self", initialAnswers, onAnswer, onFinish, onRetry }) {
     const idPrefix = useId();
     const headingRef = useRef(null);
     const moved = useRef(false);
@@ -113,7 +113,9 @@ export function ExercisePlayer({ exercises, marking = "self", initialAnswers, on
                 exercises={exercises}
                 answers={answers}
                 onReview={go}
+                headingRef={headingRef}
                 onRetry={() => {
+                    onRetry?.();
                     setAnswers(exercises.map(() => undefined));
                     setDrafts({});
                     setRevealed({});
