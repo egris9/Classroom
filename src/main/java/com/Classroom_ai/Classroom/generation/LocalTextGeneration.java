@@ -23,16 +23,22 @@ import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Talks to a local model server (llama.cpp, for one) that speaks the OpenAI chat-completions API. Selected by
@@ -62,10 +68,20 @@ public class LocalTextGeneration implements TextGeneration {
             + "Give 6 to 12 bullet points with the key points and the details that support them, and put the key "
             + "terms in bold." + SAME_LANGUAGE;
     private static final String CUT_SHORT = "length";
+    /** A model call asks for at most this many exercises; a chunk that owes more is asked again. */
+    private static final int MAX_EXERCISES_PER_CALL = 5;
+    private static final Pattern ANSWER_LETTER = Pattern.compile("(?i)^\\(?([A-D1-4])[.)]?$");
     private static final String EXERCISES =
-            "You write exercises for students from course material. An exercise is an open question with a model "
-                    + "answer. Write in the language of the text. Reply with only a JSON array of objects with the "
-                    + "keys \"question\" and \"answer\".";
+            "You write exercises for students from course material. Each exercise has a type: \"open\" (an open "
+                    + "question with a model answer), \"multiple_choice\" (a question with four different options, "
+                    + "exactly one of them correct) or \"true_false\" (a statement that the student marks true or "
+                    + "false). ";
+    private static final String EXERCISES_FORMAT =
+            " Write in the language of the text. Reply with only a JSON array of objects with the keys \"type\" "
+                    + "(\"open\", \"multiple_choice\" or \"true_false\"), \"question\", \"options\" (an array of four "
+                    + "strings, for multiple_choice only), \"answer\" (for multiple_choice the full text of the correct "
+                    + "option, for true_false \"true\" or \"false\") and \"explanation\" (one sentence saying why, for "
+                    + "multiple_choice and true_false).";
     private static final String COMBINE =
             "You are given summaries of consecutive parts of one course document. Write one summary of the whole "
                     + "document. ";
@@ -278,79 +294,256 @@ public class LocalTextGeneration implements TextGeneration {
 
     /**
      * The exercises are shared out over the chunks of the text, spread from the start to the end, so a long
-     * document is asked about throughout and not only at the beginning.
+     * document is asked about throughout and not only at the beginning. The types of the plan go to the chunks in
+     * turn. A call asks for at most {@value #MAX_EXERCISES_PER_CALL} exercises, so a chunk that owes more is asked
+     * again, and every later call lists the questions already written so the model does not repeat them.
      */
     @Override
     public List<Exercise> generateExercises(String text, ExerciseOptions options) {
         int count = options.count();
         List<String> chunks = chunksOf(text);
-        String language = languageOf(text);
+        String system = EXERCISES + difficultyText(options.difficulty()) + EXERCISES_FORMAT + languageOf(text);
         int[] perChunk = new int[chunks.size()];
         for (int i = 0; i < count; i++) {
             perChunk[(int) ((i + 0.5) * chunks.size() / count)]++;
         }
+        List<ExerciseType> plan = options.plan();
         List<Exercise> exercises = new ArrayList<>();
+        int planned = 0;
         for (int i = 0; i < chunks.size(); i++) {
-            if (perChunk[i] > 0) {
-                exercises.addAll(exercisesFrom(chunks.get(i), perChunk[i], language));
+            List<ExerciseType> owed = plan.subList(planned, planned + perChunk[i]);
+            planned += perChunk[i];
+            for (int from = 0; from < owed.size(); from += MAX_EXERCISES_PER_CALL) {
+                List<ExerciseType> batch = owed.subList(from, Math.min(from + MAX_EXERCISES_PER_CALL, owed.size()));
+                exercises.addAll(exercisesFrom(system, chunks.get(i), batch, exercises));
             }
         }
         return exercises;
     }
 
-    /** Asks for JSON; if the reply is not the right shape, says so and asks once more. */
-    private List<Exercise> exercisesFrom(String chunk, int count, String language) {
-        List<Map<String, String>> messages = new ArrayList<>(List.of(
-                message("system", EXERCISES + language),
-                message("user", "Write exactly " + count + " exercises from this text.\n\nText:\n" + chunk)));
-        String reply = chat(messages);
-        List<Exercise> exercises = parseExercises(reply, count);
-        if (exercises == null) {
-            messages.add(message("assistant", reply));
-            messages.add(message("user", "That was not valid. Reply with only a JSON array of exactly " + count
-                    + " objects, each with the keys \"question\" and \"answer\"."));
-            exercises = parseExercises(chat(messages), count);
-        }
-        if (exercises == null) {
-            throw new GenerationFailure("BAD_OUTPUT", "The model did not return exercises in the expected form.");
-        }
-        return exercises;
+    private static String difficultyText(Difficulty difficulty) {
+        return switch (difficulty) {
+            case EASY -> "Each question asks for one fact from the text, in at most 20 words. Answers are one sentence.";
+            case MEDIUM -> "Each question asks the student to explain or apply one idea, in at most 40 words. Answers "
+                    + "are 1 to 3 sentences.";
+            case HARD -> "Each question asks the student to analyse, compare or combine ideas from different places in "
+                    + "the text, and may open with a short scenario, in at most 80 words. Answers are 3 to 5 sentences.";
+        };
+    }
+
+    /** The name of a type in the JSON the model is asked for. */
+    private static String typeName(ExerciseType type) {
+        return type.name().toLowerCase(Locale.ROOT);
+    }
+
+    /** "2 of type "open", 1 of type "true_false"", for the types of one call, in enum order. */
+    private static String breakdown(Map<ExerciseType, Integer> counts) {
+        return counts.entrySet().stream().filter(entry -> entry.getValue() > 0)
+                .map(entry -> entry.getValue() + " of type \"" + typeName(entry.getKey()) + "\"")
+                .collect(Collectors.joining(", "));
     }
 
     /**
-     * The first {@code count} exercises of the first JSON array in the reply that has the right shape, or null.
-     * Every '[' is tried in turn, so prose such as "5 [easy] exercises:" before the array does not hide it.
+     * Asks for JSON with the count of each type; if the reply is not the right shape, says what was wrong and asks
+     * once more. A set is never kept half valid.
      */
-    private List<Exercise> parseExercises(String reply, int count) {
-        for (int open = reply.indexOf('['); open >= 0; open = reply.indexOf('[', open + 1)) {
-            List<Exercise> exercises = exercisesAt(reply.substring(open), count);
-            if (exercises != null) {
-                return exercises;
-            }
+    private List<Exercise> exercisesFrom(String system, String chunk, List<ExerciseType> types, List<Exercise> written) {
+        Map<ExerciseType, Integer> asked = new EnumMap<>(ExerciseType.class);
+        types.forEach(type -> asked.merge(type, 1, Integer::sum));
+        StringBuilder request = new StringBuilder("Write exactly " + types.size() + " exercises from this text: "
+                + breakdown(asked) + ".\n\nText:\n" + chunk);
+        if (!written.isEmpty()) {
+            request.append("\n\nDo not repeat these questions:");
+            written.forEach(exercise -> request.append("\n- ").append(exercise.question()));
         }
-        return null;
+        List<Map<String, String>> messages = new ArrayList<>(List.of(
+                message("system", system), message("user", request.toString())));
+        String reply = chat(messages);
+        Parsed parsed = parseExercises(reply, asked);
+        if (parsed.exercises() == null) {
+            messages.add(message("assistant", reply));
+            messages.add(message("user", "That was not valid: " + parsed.problem() + " Reply with only a JSON array of "
+                    + "exactly " + types.size() + " objects (" + breakdown(asked) + "), each with the keys described "
+                    + "before."));
+            parsed = parseExercises(chat(messages), asked);
+        }
+        if (parsed.exercises() == null) {
+            throw new GenerationFailure("BAD_OUTPUT", "The model did not return exercises in the expected form.");
+        }
+        return parsed.exercises();
     }
 
-    private List<Exercise> exercisesAt(String json, int count) {
+    /** The exercises kept from a reply, or what was wrong with it. */
+    private record Parsed(List<Exercise> exercises, String problem) {
+    }
+
+    private static final Parsed NO_ARRAY = new Parsed(null, null);
+
+    /** One item of a reply: the exercise it holds, or what is wrong with it. */
+    private record Item(Exercise exercise, String problem) {
+    }
+
+    /**
+     * The exercises of the first JSON array in the reply that holds them, or what was wrong with it. Every '[' is
+     * tried in turn, so prose such as "5 [easy] exercises:" before the array does not hide it. An array whose first
+     * item is not an object (the options of one exercise, a reference such as "[1]") is not a candidate.
+     */
+    private Parsed parseExercises(String reply, Map<ExerciseType, Integer> asked) {
+        String problem = "there was no JSON array of exercises in the reply.";
+        boolean problemKept = false;
+        for (int open = reply.indexOf('['); open >= 0; open = reply.indexOf('[', open + 1)) {
+            Parsed parsed = exercisesAt(reply.substring(open), asked);
+            if (parsed.exercises() != null) {
+                return parsed;
+            }
+            if (parsed.problem() != null && !problemKept) {
+                problem = parsed.problem();
+                problemKept = true;
+            }
+        }
+        return new Parsed(null, problem);
+    }
+
+    /**
+     * Every item must be valid. The items are then taken in order for as long as their type still has some of its
+     * count left, so an extra item is dropped, and a type that ends with some of its count left is a failure.
+     */
+    private Parsed exercisesAt(String json, Map<ExerciseType, Integer> asked) {
+        JsonNode array;
         try {
-            JsonNode array = mapper.readTree(json);
-            if (array == null || !array.isArray() || array.size() < count) {
-                return null;
-            }
-            List<Exercise> exercises = new ArrayList<>();
-            for (JsonNode item : array) {
-                String question = item.path("question").asText("").strip();
-                String answer = item.path("answer").asText("").strip();
-                if (!item.path("question").isTextual() || !item.path("answer").isTextual()
-                        || question.isEmpty() || answer.isEmpty()) {
-                    return null;
-                }
-                exercises.add(new Exercise(question, answer));
-            }
-            return exercises.subList(0, count);
+            array = mapper.readTree(json);
         } catch (JsonProcessingException e) {
+            return NO_ARRAY;
+        }
+        if (array == null || !array.isArray() || array.isEmpty() || !array.get(0).isObject()) {
+            return NO_ARRAY;
+        }
+        List<Exercise> items = new ArrayList<>();
+        for (int i = 0; i < array.size(); i++) {
+            Item item = exerciseFrom(array.get(i), i + 1);
+            if (item.exercise() == null) {
+                return new Parsed(null, item.problem());
+            }
+            items.add(item.exercise());
+        }
+        Map<ExerciseType, Integer> left = new EnumMap<>(asked);
+        List<Exercise> kept = new ArrayList<>();
+        for (Exercise exercise : items) {
+            if (left.getOrDefault(exercise.type(), 0) > 0) {
+                kept.add(exercise);
+                left.merge(exercise.type(), -1, Integer::sum);
+            }
+        }
+        String missing = breakdown(left);
+        return missing.isEmpty() ? new Parsed(kept, null) : new Parsed(null, "it is missing " + missing + ".");
+    }
+
+    private static Item flawed(String problem) {
+        return new Item(null, problem);
+    }
+
+    private static Item exerciseFrom(JsonNode item, int number) {
+        String where = "item " + number;
+        if (!item.isObject()) {
+            return flawed(where + " is not an object.");
+        }
+        ExerciseType type = typeOf(item.path("type"));
+        if (type == null) {
+            return flawed(where + " has an unknown type.");
+        }
+        String question = text(item.path("question"));
+        if (question == null) {
+            return flawed(where + " has no question.");
+        }
+        return switch (type) {
+            case OPEN -> {
+                String answer = text(item.path("answer"));
+                yield answer == null ? flawed(where + " has no answer.") : new Item(new Exercise(question, answer), null);
+            }
+            case MULTIPLE_CHOICE -> {
+                List<String> options = optionsOf(item.path("options"));
+                if (options == null) {
+                    yield flawed(where + " needs 4 options that are different from each other.");
+                }
+                String answer = optionFor(item.path("answer"), options);
+                yield answer == null ? flawed(where + " needs an answer that is one of its options.")
+                        : new Item(new Exercise(type, question, options, answer, text(item.path("explanation"))), null);
+            }
+            case TRUE_FALSE -> {
+                String answer = truthOf(item.path("answer"));
+                yield answer == null ? flawed(where + " needs the answer \"true\" or \"false\".")
+                        : new Item(new Exercise(type, question, List.of(), answer, text(item.path("explanation"))), null);
+            }
+        };
+    }
+
+    /** A missing type is an open question, so a reply in the old shape still reads. */
+    private static ExerciseType typeOf(JsonNode node) {
+        if (node.isMissingNode() || node.isNull()) {
+            return ExerciseType.OPEN;
+        }
+        if (!node.isTextual()) {
             return null;
         }
+        String name = node.asText().strip().toLowerCase(Locale.ROOT).replace(' ', '_').replace('-', '_');
+        return Arrays.stream(ExerciseType.values()).filter(type -> typeName(type).equals(name)).findFirst().orElse(null);
+    }
+
+    /** The text of a string node, stripped, or null if it is not a string or is blank. */
+    private static String text(JsonNode node) {
+        if (!node.isTextual() || node.asText().isBlank()) {
+            return null;
+        }
+        return node.asText().strip();
+    }
+
+    /** Exactly four strings, none blank, no two the same once outer spaces and case are ignored. */
+    private static List<String> optionsOf(JsonNode node) {
+        if (!node.isArray() || node.size() != 4) {
+            return null;
+        }
+        List<String> options = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (JsonNode option : node) {
+            String text = text(option);
+            if (text == null || !seen.add(text.toLowerCase(Locale.ROOT))) {
+                return null;
+            }
+            options.add(text);
+        }
+        return options;
+    }
+
+    /** The option an answer names: its own text, or its letter A to D or number 1 to 4. */
+    private static String optionFor(JsonNode node, List<String> options) {
+        String raw = node.isNumber() ? String.valueOf(node.asInt()) : text(node);
+        if (raw == null) {
+            return null;
+        }
+        for (String option : options) {
+            if (option.equalsIgnoreCase(raw)) {
+                return option;
+            }
+        }
+        Matcher letter = ANSWER_LETTER.matcher(raw);
+        if (!letter.matches()) {
+            return null;
+        }
+        char mark = Character.toUpperCase(letter.group(1).charAt(0));
+        return options.get(mark >= 'A' ? mark - 'A' : mark - '1');
+    }
+
+    /** {@code "true"} or {@code "false"} from a boolean or a string, or null. */
+    private static String truthOf(JsonNode node) {
+        if (node.isBoolean()) {
+            return String.valueOf(node.asBoolean());
+        }
+        String text = text(node);
+        if (text == null) {
+            return null;
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        return lower.equals("true") || lower.equals("false") ? lower : null;
     }
 
     @Override
