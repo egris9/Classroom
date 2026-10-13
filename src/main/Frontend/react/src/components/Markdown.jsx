@@ -24,7 +24,9 @@ const components = {
     h4: element("h4", SUBHEADING, "auto"),
     h5: element("h4", SUBHEADING, "auto"),
     h6: element("h4", SUBHEADING, "auto"),
-    p: element("p", "text-sm leading-reading", "auto"),
+    // pre-line: a model often puts each item of a list of terms on its own line with no list marks, and those lines
+    // would otherwise run together into one paragraph.
+    p: element("p", "whitespace-pre-line text-sm leading-reading", "auto"),
     ul: element("ul", "list-inside list-disc space-y-2 text-sm leading-reading"),
     ol: element("ol", "list-inside list-decimal space-y-2 text-sm leading-reading"),
     li: element("li", undefined, "auto"),
