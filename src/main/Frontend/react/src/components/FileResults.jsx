@@ -116,7 +116,8 @@ export function FileResults({ file, role }) {
                 </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="summary" className="mt-4 space-y-4">
+            {/* Kept mounted while the other tab shows, so each card stays folded or open as it was left. */}
+            <TabsContent value="summary" forceMount className="mt-4 space-y-4 data-[state=inactive]:hidden">
                 <div className="flex flex-wrap items-end gap-3">
                     <div className="grid gap-1.5">
                         <Label htmlFor="summary-level">Length</Label>
