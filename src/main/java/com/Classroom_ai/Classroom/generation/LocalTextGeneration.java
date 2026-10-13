@@ -228,14 +228,15 @@ public class LocalTextGeneration implements TextGeneration {
 
     /**
      * A reply to a summarising request. It may take as many tokens as {@code cap}'s level allows and as long as the
-     * summary's own level allows. One that the cap cut off, or with no text left in it, is a failure, not a summary.
+     * summary's own level allows. How much the model writes varies from one try to the next, so a reply that the cap
+     * cut off is asked for once more; one cut off again, or with no text left in it, is a failure, not a summary.
      */
     private String summary(String kind, String system, String text, SummaryLevel level, SummaryLevel cap) {
-        long start = System.nanoTime();
-        Reply reply = complete(List.of(message("system", system), message("user", text)),
-                summaryMaxTokens.get(cap), isLong(level) ? longTimeout : timeout);
-        log.debug("Summary call ({}, level {}): {} completion tokens in {} ms", kind, level,
-                reply.completionTokens(), (System.nanoTime() - start) / 1_000_000);
+        List<Map<String, String>> messages = List.of(message("system", system), message("user", text));
+        Reply reply = summaryReply(kind, messages, level, cap);
+        if (CUT_SHORT.equals(reply.finishReason())) {
+            reply = summaryReply(kind, messages, level, cap);
+        }
         if (CUT_SHORT.equals(reply.finishReason())) {
             throw new GenerationFailure("BAD_OUTPUT", "The summary was cut short. Try a shorter level.");
         }
@@ -243,6 +244,14 @@ public class LocalTextGeneration implements TextGeneration {
             throw new GenerationFailure("BAD_OUTPUT", "The model returned an empty summary.");
         }
         return reply.text();
+    }
+
+    private Reply summaryReply(String kind, List<Map<String, String>> messages, SummaryLevel level, SummaryLevel cap) {
+        long start = System.nanoTime();
+        Reply reply = complete(messages, summaryMaxTokens.get(cap), isLong(level) ? longTimeout : timeout);
+        log.debug("Summary call ({}, level {}): {} completion tokens in {} ms, finished by {}", kind, level,
+                reply.completionTokens(), (System.nanoTime() - start) / 1_000_000, reply.finishReason());
+        return reply;
     }
 
     /** Cuts at whitespace so that no chunk is longer than the limit and no word is split. */

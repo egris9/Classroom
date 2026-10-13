@@ -34,7 +34,11 @@ final class StubModelServer implements AutoCloseable {
 
     private final HttpServer server;
     private final List<JsonNode> requests = new CopyOnWriteArrayList<>();
-    private final ConcurrentLinkedQueue<Function<String, String>> script = new ConcurrentLinkedQueue<>();
+    /** One reply set up ahead of time; a null finish reason means the server's usual one. */
+    private record Scripted(String content, String finishReason) {
+    }
+
+    private final ConcurrentLinkedQueue<Scripted> script = new ConcurrentLinkedQueue<>();
     private volatile Function<String, String> reply = userMessage -> "ok";
     private volatile BiFunction<String, String, String> promptReply = null;
     private volatile String finishReason = "stop";
@@ -57,11 +61,13 @@ final class StubModelServer implements AutoCloseable {
                 }
             }
             String userMessage = lastUserMessage(request);
-            Function<String, String> next = script.poll();
+            Scripted next = script.poll();
             BiFunction<String, String, String> byPrompt = promptReply;
-            String content = byPrompt != null
+            String content = next != null ? next.content()
+                    : byPrompt != null
                     ? byPrompt.apply(request.path("messages").path(0).path("content").asText(), userMessage)
-                    : (next != null ? next : reply).apply(userMessage);
+                    : reply.apply(userMessage);
+            String finishReason = next != null && next.finishReason() != null ? next.finishReason() : this.finishReason;
             if (status == 200 && request.path("stream").asBoolean(false)) {
                 stream(exchange, content);
                 return;
@@ -176,7 +182,13 @@ final class StubModelServer implements AutoCloseable {
 
     /** The next request is answered by this function, then the server falls back to {@link #replyWith}. */
     StubModelServer thenReply(String content) {
-        script.add(userMessage -> content);
+        script.add(new Scripted(content, null));
+        return this;
+    }
+
+    /** The next request is answered with this text, cut off by the token cap ({@code finish_reason} {@code length}). */
+    StubModelServer thenCutShort(String content) {
+        script.add(new Scripted(content, "length"));
         return this;
     }
 

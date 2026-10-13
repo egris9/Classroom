@@ -207,6 +207,16 @@ class LocalTextGenerationTest {
     }
 
     @Test
+    void aSummaryCutByTheTokenCapIsAskedForOnceMore() {
+        server.thenCutShort("The summary stops in the mid").replyWith(user -> "The whole summary.");
+
+        assertThat(adapter().summarize("Some text.", SummaryLevel.EXTRA_LONG)).isEqualTo("The whole summary.");
+
+        assertThat(server.requests()).hasSize(2);
+        assertThat(server.requests().get(1)).as("the second request asks the same thing").isEqualTo(server.requests().get(0));
+    }
+
+    @Test
     void aSummaryCutByTheTokenCapFailsBadOutput() {
         server.replyWith(user -> "The summary stops in the mid").finishesWith("length");
 
@@ -215,15 +225,29 @@ class LocalTextGenerationTest {
                     assertThat(f.code()).isEqualTo("BAD_OUTPUT");
                     assertThat(f.getMessage()).isEqualTo("The summary was cut short. Try a shorter level.");
                 });
+        assertThat(server.requests()).as("asked for once more, then given up on").hasSize(2);
     }
 
     @Test
-    void aPartCutByTheTokenCapFailsBadOutputBeforeAnyOtherRequest() {
+    void aPartCutOnceByTheTokenCapIsAskedForAgainAndTheSummaryGoesOn() {
+        server.thenCutShort("A part that stops in the mid").replyWith(user -> "S");
+
+        assertThat(adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60), SummaryLevel.LONG))
+                .isEqualTo("S");
+
+        int last = server.requests().size() - 1;
+        assertThat(server.userMessage(1)).as("the first part again").isEqualTo(server.userMessage(0));
+        assertThat(server.userMessage(last)).as("no cut text reaches the combining request").doesNotContain("stops in the mid");
+    }
+
+    @Test
+    void aPartCutTwiceByTheTokenCapFailsBadOutputBeforeAnyOtherPart() {
         server.replyWith(user -> "S").finishesWith("length");
 
         assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60), SummaryLevel.LONG))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
-        assertThat(server.requests()).hasSize(1);
+        assertThat(server.requests()).hasSize(2);
+        assertThat(server.userMessage(1)).isEqualTo(server.userMessage(0));
     }
 
     @Test
