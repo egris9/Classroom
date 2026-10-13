@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExerciseList } from "@/components/ExerciseList";
+import { ExerciseOptionsForm } from "@/components/exercises/ExerciseOptionsForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SummaryCard } from "@/components/SummaryCard";
 import { getPref, setPref } from "@/lib/prefs";
@@ -42,6 +43,7 @@ export function FileResults({ file, role }) {
     const [exerciseSets, setExerciseSets] = useState(null);
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
+    const [optionsOpen, setOptionsOpen] = useState(false);
     const [level, setLevel] = useState(() => {
         const stored = getPref("summaryLevel", DEFAULT_SUMMARY_LEVEL);
         return isSummaryLevel(stored) ? stored : DEFAULT_SUMMARY_LEVEL;
@@ -75,14 +77,20 @@ export function FileResults({ file, role }) {
         return () => clearTimeout(timer);
     }, [pending, summaries, exerciseSets, refresh]);
 
+    // The server refuses a second request of a kind while one is pending (409), so the button waits too.
+    const exercisesPending = (exerciseSets ?? []).some((set) => set.status === "PENDING");
+
+    /** Resolves true when the request was accepted; a refusal is shown as a toast. */
     const request = async (action, label) => {
         setBusy(true);
         try {
             await action(file.id);
             toast.success(`${label} requested. It appears here when it is ready.`);
             await refresh();
+            return true;
         } catch (err) {
             toast.error(err.message);
+            return false;
         } finally {
             setBusy(false);
         }
@@ -165,21 +173,30 @@ export function FileResults({ file, role }) {
             </TabsContent>
 
             <TabsContent value="exercises" className="mt-4 space-y-4">
-                {isTeacher && (
-                    <Button
-                        variant="outline"
-                        className="h-11"
-                        disabled={busy}
-                        onClick={() => request(requestExerciseSet, "Exercises")}
-                    >
-                        Generate exercises
-                    </Button>
-                )}
+                <Button
+                    variant="outline"
+                    className="h-11"
+                    disabled={busy || exercisesPending}
+                    onClick={() => setOptionsOpen(true)}
+                >
+                    Generate exercises
+                </Button>
+                <ExerciseOptionsForm
+                    open={optionsOpen}
+                    onOpenChange={setOptionsOpen}
+                    busy={busy}
+                    onSubmit={async (options) => {
+                        const accepted = await request((fileId) => requestExerciseSet(fileId, options), "Exercises");
+                        if (accepted) {
+                            setOptionsOpen(false);
+                        }
+                    }}
+                />
                 {exerciseSets.length === 0 && (
                     <Empty>
                         {isTeacher
                             ? "No exercises yet. Choose Generate exercises to make a set for your students."
-                            : "Your Teacher has not published exercises for this PDF yet."}
+                            : "No exercises yet. Choose Generate exercises to make a set only you can see."}
                     </Empty>
                 )}
                 {exerciseSets.map((set) => (
