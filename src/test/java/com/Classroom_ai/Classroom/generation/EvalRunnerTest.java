@@ -74,6 +74,21 @@ class EvalRunnerTest {
     }
 
     @Test
+    void each_pdf_also_gets_a_hard_set_of_fifteen_exercises_of_all_three_types_with_its_time() throws IOException {
+        writePdf(pdfs().resolve("biology.pdf"), "Photosynthesis turns light into chemical energy.");
+
+        EvalResult result = runner().run(pdfs(), out()).get(0);
+
+        assertThat(result.hardMixedStatus()).isEqualTo("DONE");
+        assertThat(result.hardMixedMillis()).isGreaterThanOrEqualTo(0);
+        String hard = Files.readString(out().resolve("biology.exercises.hard.json"));
+        assertThat(hard).contains("\"MULTIPLE_CHOICE\"").contains("\"TRUE_FALSE\"").contains("\"OPEN\"");
+        assertThat(hard.split("\"question\"", -1)).hasSize(16);
+        assertThat(Files.readString(out().resolve("results.md")))
+                .contains("## Hard mixed exercise set (15)").contains("| biology.pdf | DONE | ");
+    }
+
+    @Test
     void each_level_is_recorded_with_the_word_count_of_its_summary() throws IOException {
         writePdf(pdfs().resolve("biology.pdf"), "Light becomes sugar. ".repeat(20).strip());
 
@@ -115,6 +130,8 @@ class EvalRunnerTest {
         assertThat(results.get(0).summaries()).hasSize(4)
                 .allSatisfy(summary -> assertThat(summary.status()).isEqualTo("NO_TEXT"));
         assertThat(results.get(0).exercisesStatus()).isEqualTo("NO_TEXT");
+        assertThat(results.get(0).hardMixedStatus()).isEqualTo("NO_TEXT");
+        assertThat(Files.readString(out().resolve("a-scan.exercises.hard.json"))).startsWith("FAILED NO_TEXT");
         assertThat(Files.readString(out().resolve("a-scan.summary.extra_long.txt"))).startsWith("FAILED NO_TEXT");
         assertThat(results.get(1).summaries()).hasSize(4)
                 .allSatisfy(summary -> assertThat(summary.status()).isEqualTo("DONE"));

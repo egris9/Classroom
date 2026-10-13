@@ -817,6 +817,31 @@ class LocalTextGenerationTest {
     }
 
     @Test
+    void aSecondAskIsLoggedWithWhatWasWrongAndNeverTheText() {
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(LocalTextGeneration.class);
+        ch.qos.logback.classic.Level before = logger.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> logged =
+                new ch.qos.logback.core.read.ListAppender<>();
+        logged.start();
+        logger.addAppender(logged);
+        logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+        try {
+            server.thenReply(array(choiceWith(1, "[\"A\",\"B\",\"C\"]", "\"A\""), choice(2), choice(3)))
+                    .thenReply(array(choice(1), choice(2), choice(3)));
+
+            adapter().generateExercises("The secret sentence about mitochondria.", only(ExerciseType.MULTIPLE_CHOICE, 3));
+        } finally {
+            logger.detachAppender(logged);
+            logger.setLevel(before);
+        }
+
+        assertThat(logged.list).extracting(event -> event.getFormattedMessage())
+                .anySatisfy(message -> assertThat(message).contains("asking once more").contains("item 1"))
+                .noneSatisfy(message -> assertThat(message).contains("mitochondria"));
+    }
+
+    @Test
     void oldStyleOpenQuestionsWithNoTypeKeyAreStillAccepted() {
         server.replyWith(user -> array("{\"question\":\"Q1?\",\"answer\":\"A1\"}", "{\"question\":\"Q2?\",\"answer\":\"A2\"}",
                 "{\"question\":\"Q3?\",\"answer\":\"A3\"}", "{\"question\":\"Q4?\",\"answer\":\"A4\"}",

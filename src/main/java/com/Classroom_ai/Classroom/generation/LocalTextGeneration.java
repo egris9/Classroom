@@ -361,6 +361,7 @@ public class LocalTextGeneration implements TextGeneration {
         String reply = chat(messages);
         Parsed parsed = parseExercises(reply, asked);
         if (parsed.exercises() == null) {
+            log.debug("The exercises ({}) were not valid, {}, asking once more", breakdown(asked), parsed.problem());
             messages.add(message("assistant", reply));
             messages.add(message("user", "That was not valid: " + parsed.problem() + " Reply with only a JSON array of "
                     + "exactly " + types.size() + " objects (" + breakdown(asked) + "), each with the keys described "

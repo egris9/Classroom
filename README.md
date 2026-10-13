@@ -1,8 +1,8 @@
 # Classroom
 
-A small web app for courses. A **Teacher** creates a course, uploads PDFs and shares an 8-character access code. **Students** join with the code, read the PDFs and ask a language model for a summary or, for the Teacher, a set of exercises. A Teacher's results are published to the course; a Student's stay private to that Student.
+A small web app for courses. A **Teacher** creates a course, uploads PDFs and shares an 8-character access code. **Students** join with the code, read the PDFs and ask a language model for a summary or a set of exercises. A Teacher's results are published to the course; a Student's stay private to that Student.
 
-Roles belong to one course, not to an account: whoever creates a course is its Teacher, and whoever joins it with the code is a Student in that course only. A **Summary** is generated text about one PDF; an **Exercise set** is 5 generated questions with model answers for one PDF.
+Roles belong to one course, not to an account: whoever creates a course is its Teacher, and whoever joins it with the code is a Student in that course only. A **Summary** is generated text about one PDF; an **Exercise set** is 3 to 15 generated exercises (open, multiple choice or true/false, one type or several, easy, medium or hard) with model answers for one PDF; the File page still asks for 5 open ones until the exercise player arrives, but `POST /api/files/{fileId}/exercise-sets` already takes `{types, difficulty, count}`. A member has one request of each kind running per file at a time (409 `GENERATION_PENDING`).
 
 - Backend: Spring Boot 3, Java 21, MySQL, in `src/main/java`.
 - Frontend: React, Vite and Tailwind, in `src/main/Frontend/react`.

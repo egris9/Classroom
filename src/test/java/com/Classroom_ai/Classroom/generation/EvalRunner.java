@@ -71,7 +71,8 @@ final class EvalRunner {
                 unread.add(new EvalResult.LevelResult(level, failure.code(), 0, 0));
             }
             Files.writeString(outDir.resolve(base + ".exercises.json"), report, StandardCharsets.UTF_8);
-            return new EvalResult(fileName, 0, unread, failure.code(), 0);
+            Files.writeString(outDir.resolve(base + ".exercises.hard.json"), report, StandardCharsets.UTF_8);
+            return new EvalResult(fileName, 0, unread, failure.code(), 0, failure.code(), 0);
         }
         List<EvalResult.LevelResult> summaries = new ArrayList<>();
         for (SummaryLevel level : SummaryLevel.values()) {
@@ -80,15 +81,22 @@ final class EvalRunner {
             int words = summary.status().equals("DONE") ? summary.output().strip().split("\\s+").length : 0;
             summaries.add(new EvalResult.LevelResult(level, summary.status(), words, summary.millis()));
         }
-        Timed exercises = timed(() -> {
+        Timed exercises = exerciseSet(text, ExerciseOptions.of(null, null, exercisesPerSet));
+        Files.writeString(outDir.resolve(base + ".exercises.json"), exercises.output(), StandardCharsets.UTF_8);
+        Timed hard = exerciseSet(text, ExerciseOptions.of(List.of(ExerciseType.values()), Difficulty.HARD, ExerciseOptions.MAX_COUNT));
+        Files.writeString(outDir.resolve(base + ".exercises.hard.json"), hard.output(), StandardCharsets.UTF_8);
+        return new EvalResult(fileName, text.length(), summaries, exercises.status(), exercises.millis(),
+                hard.status(), hard.millis());
+    }
+
+    private Timed exerciseSet(String text, ExerciseOptions options) {
+        return timed(() -> {
             try {
-                return mapper.writeValueAsString(generation.generateExercises(text, ExerciseOptions.of(null, null, exercisesPerSet)));
+                return mapper.writeValueAsString(generation.generateExercises(text, options));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
         });
-        Files.writeString(outDir.resolve(base + ".exercises.json"), exercises.output(), StandardCharsets.UTF_8);
-        return new EvalResult(fileName, text.length(), summaries, exercises.status(), exercises.millis());
     }
 
     private static Path summaryFile(Path outDir, String base, SummaryLevel level) {
@@ -128,6 +136,11 @@ final class EvalRunner {
         for (EvalResult r : results) {
             table.append("| ").append(r.pdf()).append(" | ").append(r.exercisesStatus()).append(" | ")
                     .append(r.exercisesMillis()).append(" |\n");
+        }
+        table.append("\n## Hard mixed exercise set (15)\n\n| PDF | Status | ms |\n|---|---|---|\n");
+        for (EvalResult r : results) {
+            table.append("| ").append(r.pdf()).append(" | ").append(r.hardMixedStatus()).append(" | ")
+                    .append(r.hardMixedMillis()).append(" |\n");
         }
         return table.toString();
     }
