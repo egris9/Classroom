@@ -2,6 +2,7 @@ package com.Classroom_ai.Classroom;
 
 import com.Classroom_ai.Classroom.generation.ChatMessage;
 import com.Classroom_ai.Classroom.generation.FakeTextGeneration;
+import com.Classroom_ai.Classroom.generation.SummaryLevel;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -59,9 +60,9 @@ class ToolsConnectionsTest extends ToolsTestSupport {
         }
 
         @Override
-        public String summarize(String text) {
+        public String summarize(String text, SummaryLevel level) {
             waitForTheTest();
-            return super.summarize(text);
+            return super.summarize(text, level);
         }
 
         @Override

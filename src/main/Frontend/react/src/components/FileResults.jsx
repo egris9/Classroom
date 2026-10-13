@@ -3,14 +3,20 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExerciseList } from "@/components/ExerciseList";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SummaryCard } from "@/components/SummaryCard";
+import { getPref, setPref } from "@/lib/prefs";
+import { DEFAULT_SUMMARY_LEVEL, isSummaryLevel, SUMMARY_LEVELS } from "@/lib/summaryLevels";
 import { listExerciseSets, listSummaries, requestExerciseSet, requestSummary } from "../api/generation.js";
 
 const POLL_MS = 2000;
+// A result card that was not there before fades in and rises 4px (main.css).
+const APPEAR = "result-appear";
 
 function ResultBadge({ item }) {
     if (item.status === "PENDING") {
@@ -36,12 +42,19 @@ export function FileResults({ file, role }) {
     const [exerciseSets, setExerciseSets] = useState(null);
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
+    const [level, setLevel] = useState(() => {
+        const stored = getPref("summaryLevel", DEFAULT_SUMMARY_LEVEL);
+        return isSummaryLevel(stored) ? stored : DEFAULT_SUMMARY_LEVEL;
+    });
+    // The summaries that were here when the page loaded. One that comes later is new, and only a new one fades in.
+    const [loadedIds, setLoadedIds] = useState(null);
     const isTeacher = role === "TEACHER";
 
     const refresh = useCallback(async () => {
         try {
             const [loadedSummaries, loadedSets] = await Promise.all([listSummaries(file.id), listExerciseSets(file.id)]);
             setSummaries(loadedSummaries);
+            setLoadedIds((known) => known ?? new Set(loadedSummaries.map((summary) => summary.id)));
             setExerciseSets(loadedSets);
             setError(null);
         } catch (err) {
@@ -103,23 +116,51 @@ export function FileResults({ file, role }) {
                 </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="summary" className="mt-4 space-y-4">
-                <Button
-                    variant={summaries.length === 0 ? "default" : "outline"}
-                    className="h-11"
-                    disabled={busy}
-                    onClick={() => request(requestSummary, "Summary")}
-                >
-                    {summaries.length === 0 ? "Summarise" : "Summarise again"}
-                </Button>
+            {/* Kept mounted while the other tab shows, so each card stays folded or open as it was left. */}
+            <TabsContent value="summary" forceMount className="mt-4 space-y-4 data-[state=inactive]:hidden">
+                <div className="flex flex-wrap items-end gap-3">
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="summary-level">Length</Label>
+                        <Select value={level} onValueChange={setLevel} disabled={busy}>
+                            <SelectTrigger id="summary-level" className="h-11 w-40 bg-card">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {SUMMARY_LEVELS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value} className="min-h-11">
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <Button
+                        variant={summaries.length === 0 ? "default" : "outline"}
+                        className="h-11"
+                        disabled={busy}
+                        onClick={() => {
+                            setPref("summaryLevel", level);
+                            request((fileId) => requestSummary(fileId, level), "Summary");
+                        }}
+                    >
+                        {summaries.length === 0 ? "Summarise" : "Summarise again"}
+                    </Button>
+                </div>
                 {error && (
                     <Alert variant="destructive">
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
                 )}
                 {summaries.length === 0 && <Empty>No summary yet. Choose Summarise to make one.</Empty>}
-                {summaries.map((summary) => (
-                    <SummaryCard key={summary.id} summary={summary} badge={<ResultBadge item={summary} />} />
+                {summaries.map((summary, index) => (
+                    <SummaryCard
+                        key={summary.id}
+                        summary={summary}
+                        badge={<ResultBadge item={summary} />}
+                        collapsible
+                        defaultOpen={index === 0}
+                        className={loadedIds?.has(summary.id) ? undefined : APPEAR}
+                    />
                 ))}
             </TabsContent>
 

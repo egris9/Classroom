@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { Markdown } from "@/components/Markdown";
+import { summaryLevelLabel } from "@/lib/summaryLevels";
 
 /** Says that a result came from the demo adapter, which is the case when its model is "fake". */
 export function DemoNotice({ item }) {
@@ -45,21 +46,43 @@ export function ResultFailure({ item }) {
     );
 }
 
-/** One Summary as a card. `badge` is an optional node shown beside the title, such as the result's status. */
-export function SummaryCard({ summary, badge }) {
+const DAY = { day: "numeric", month: "short", year: "numeric" };
+
+/** The level and the day of a Summary, for the title row, or null: a summary from the AI tools has neither. */
+function metaOf(summary) {
+    const level = summaryLevelLabel(summary.level);
+    const created = summary.createdAt ? new Date(summary.createdAt) : null;
+    const day = created && !Number.isNaN(created.getTime()) ? created : null;
+    if (!level && !day) {
+        return null;
+    }
     return (
-        <Card>
-            <CardContent className="space-y-2 p-4">
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">Summary</span>
-                    {badge}
-                </div>
-                <DemoNotice item={summary} />
-                <PendingNotice item={summary} />
-                {summary.text && <Markdown>{summary.text}</Markdown>}
-                <ResultFailure item={summary} />
-            </CardContent>
-        </Card>
+        <>
+            {level && <span>{level}</span>}
+            {day && <time dateTime={day.toISOString()}>{day.toLocaleDateString(undefined, DAY)}</time>}
+        </>
+    );
+}
+
+/**
+ * One Summary as a card. `badge` is an optional node shown in the title row, such as the result's status. With
+ * `collapsible` the card folds, and `defaultOpen` says how it starts; without it the card is always open.
+ */
+export function SummaryCard({ summary, badge, collapsible = false, defaultOpen = true, className }) {
+    return (
+        <CollapsibleCard
+            title="Summary"
+            meta={metaOf(summary)}
+            badge={badge}
+            collapsible={collapsible}
+            defaultOpen={defaultOpen}
+            className={className}
+        >
+            <DemoNotice item={summary} />
+            <PendingNotice item={summary} />
+            {summary.text && <Markdown>{summary.text}</Markdown>}
+            <ResultFailure item={summary} />
+        </CollapsibleCard>
     );
 }
 

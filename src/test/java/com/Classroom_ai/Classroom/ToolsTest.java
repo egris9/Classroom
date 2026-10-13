@@ -4,6 +4,7 @@ import com.Classroom_ai.Classroom.generation.Exercise;
 import com.Classroom_ai.Classroom.generation.FakeTextGeneration;
 import com.Classroom_ai.Classroom.generation.Ocr;
 import com.Classroom_ai.Classroom.generation.PdfText;
+import com.Classroom_ai.Classroom.generation.SummaryLevel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,11 +49,13 @@ class ToolsTest extends ToolsTestSupport {
     /** The fake model, counting how often it is asked, so a refusal can be shown to have cost no model call. */
     static class CountingTextGeneration extends FakeTextGeneration {
         final AtomicInteger calls = new AtomicInteger();
+        volatile SummaryLevel lastLevel;
 
         @Override
-        public String summarize(String text) {
+        public String summarize(String text, SummaryLevel level) {
             calls.incrementAndGet();
-            return super.summarize(text);
+            lastLevel = level;
+            return super.summarize(text, level);
         }
 
         @Override
@@ -139,6 +142,14 @@ class ToolsTest extends ToolsTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").value(containsString("Photosynthesis turns light")))
                 .andExpect(jsonPath("$.model").value("fake"));
+    }
+
+    /** The tools page has no level picker, and a request there waits for its answer: it is always a medium summary. */
+    @Test
+    void aToolsSummaryIsAskedForAtTheMediumLevel() throws Exception {
+        summarise(newIp(), LESSON).andExpect(status().isOk());
+
+        assertThat(model.lastLevel).isEqualTo(SummaryLevel.MEDIUM);
     }
 
     @Test

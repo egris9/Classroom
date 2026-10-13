@@ -7,6 +7,7 @@ import com.Classroom_ai.Classroom.course.CourseFileRepository;
 import com.Classroom_ai.Classroom.generation.Exercise;
 import com.Classroom_ai.Classroom.generation.GenerationService;
 import com.Classroom_ai.Classroom.generation.Summary;
+import com.Classroom_ai.Classroom.generation.SummaryLevel;
 import com.Classroom_ai.Classroom.generation.SummaryRepository;
 import com.Classroom_ai.Classroom.generation.TextGeneration;
 import com.jayway.jsonpath.JsonPath;
@@ -38,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,7 +71,7 @@ class GenerationTest extends GenerationTestSupport {
 
     @Test
     void fakeAdapter_isDeterministic_andNamesItself() {
-        assertEquals(textGeneration.summarize(LESSON), textGeneration.summarize(LESSON));
+        assertEquals(textGeneration.summarize(LESSON, SummaryLevel.MEDIUM), textGeneration.summarize(LESSON, SummaryLevel.MEDIUM));
         List<Exercise> exercises = textGeneration.generateExercises(LESSON, 5);
         assertEquals(5, exercises.size());
         assertEquals(exercises, textGeneration.generateExercises(LESSON, 5));
@@ -281,7 +283,7 @@ class GenerationTest extends GenerationTestSupport {
             } finally {
                 running.decrementAndGet();
             }
-        }).when(textGeneration).summarize(anyString());
+        }).when(textGeneration).summarize(anyString(), any());
 
         for (int i = 0; i < 3; i++) {
             c.generate("summaries", file, c.teacher).andExpect(status().isAccepted());

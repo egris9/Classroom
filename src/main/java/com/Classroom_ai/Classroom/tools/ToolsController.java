@@ -8,6 +8,7 @@ import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.auth.UserService;
 import com.Classroom_ai.Classroom.generation.GenerationService;
 import com.Classroom_ai.Classroom.generation.PdfText;
+import com.Classroom_ai.Classroom.generation.SummaryLevel;
 import com.Classroom_ai.Classroom.generation.TextGeneration;
 import com.Classroom_ai.Classroom.generation.TextQuality;
 import com.Classroom_ai.Classroom.material.FileTooLargeException;
@@ -101,7 +102,7 @@ public class ToolsController {
 
     private ToolsSummaryResponse summarise(Input input, HttpServletRequest request, HttpServletResponse response) {
         return run(input, request, response, text ->
-                new ToolsSummaryResponse(textGeneration.summarize(text), textGeneration.modelName()));
+                new ToolsSummaryResponse(textGeneration.summarize(text, SummaryLevel.MEDIUM), textGeneration.modelName()));
     }
 
     private ToolsExerciseSetResponse exercises(Input input, HttpServletRequest request, HttpServletResponse response) {

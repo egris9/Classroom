@@ -16,13 +16,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * A real HTTP server that speaks just enough of {@code /v1/chat/completions} for the adapter tests. Each request is
- * answered by the {@code reply} function, which gets the user message and returns the assistant's content. A request
+ * answered by the {@code reply} function, which gets the user message and returns the assistant's content (or by the
+ * one given to {@link #replyToPrompt}, which also gets the system message). A request
  * with {@code "stream": true} is answered as server-sent events instead: the pieces given to {@link #streamsChunks},
  * or else the reply cut into words.
  */
@@ -32,8 +34,14 @@ final class StubModelServer implements AutoCloseable {
 
     private final HttpServer server;
     private final List<JsonNode> requests = new CopyOnWriteArrayList<>();
-    private final ConcurrentLinkedQueue<Function<String, String>> script = new ConcurrentLinkedQueue<>();
+    /** One reply set up ahead of time; a null finish reason means the server's usual one. */
+    private record Scripted(String content, String finishReason) {
+    }
+
+    private final ConcurrentLinkedQueue<Scripted> script = new ConcurrentLinkedQueue<>();
     private volatile Function<String, String> reply = userMessage -> "ok";
+    private volatile BiFunction<String, String, String> promptReply = null;
+    private volatile String finishReason = "stop";
     private volatile int status = 200;
     private volatile long delayMillis = 0;
     private volatile List<String> streamPayloads = null;
@@ -53,15 +61,21 @@ final class StubModelServer implements AutoCloseable {
                 }
             }
             String userMessage = lastUserMessage(request);
-            Function<String, String> next = script.poll();
-            String content = (next != null ? next : reply).apply(userMessage);
+            Scripted next = script.poll();
+            BiFunction<String, String, String> byPrompt = promptReply;
+            String content = next != null ? next.content()
+                    : byPrompt != null
+                    ? byPrompt.apply(request.path("messages").path(0).path("content").asText(), userMessage)
+                    : reply.apply(userMessage);
+            String finishReason = next != null && next.finishReason() != null ? next.finishReason() : this.finishReason;
             if (status == 200 && request.path("stream").asBoolean(false)) {
                 stream(exchange, content);
                 return;
             }
             byte[] body = MAPPER.writeValueAsBytes(Map.of("choices",
-                    List.of(Map.of("index", 0, "finish_reason", "stop",
-                            "message", Map.of("role", "assistant", "content", content)))));
+                    List.of(Map.of("index", 0, "finish_reason", finishReason,
+                            "message", Map.of("role", "assistant", "content", content))),
+                    "usage", Map.of("completion_tokens", content.split("\\s+").length)));
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(status, status == 200 ? body.length : -1);
             if (status == 200) {
@@ -168,7 +182,25 @@ final class StubModelServer implements AutoCloseable {
 
     /** The next request is answered by this function, then the server falls back to {@link #replyWith}. */
     StubModelServer thenReply(String content) {
-        script.add(userMessage -> content);
+        script.add(new Scripted(content, null));
+        return this;
+    }
+
+    /** The next request is answered with this text, cut off by the token cap ({@code finish_reason} {@code length}). */
+    StubModelServer thenCutShort(String content) {
+        script.add(new Scripted(content, "length"));
+        return this;
+    }
+
+    /** Replies that are not streamed end for this reason: {@code length} is a reply cut by its token cap. */
+    StubModelServer finishesWith(String finishReason) {
+        this.finishReason = finishReason;
+        return this;
+    }
+
+    /** Like {@link #replyWith}, for a reply that depends on the system message too. */
+    StubModelServer replyToPrompt(BiFunction<String, String, String> reply) {
+        this.promptReply = reply;
         return this;
     }
 
