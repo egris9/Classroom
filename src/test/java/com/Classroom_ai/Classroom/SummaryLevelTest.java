@@ -59,6 +59,7 @@ class SummaryLevelTest extends GenerationTestSupport {
         summarise(file, c.teacher, "{}")
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.level").value("MEDIUM"));
+        awaitDone("summaries", file, c.teacher);
         summarise(file, c.teacher, "{\"level\":null}")
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.level").value("MEDIUM"));

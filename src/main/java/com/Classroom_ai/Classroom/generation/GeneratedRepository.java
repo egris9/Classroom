@@ -9,4 +9,7 @@ import java.util.List;
 public interface GeneratedRepository<T extends Generated> extends JpaRepository<T, Long> {
 
     List<T> findByStatus(Status status);
+
+    /** Whether the user has a request of this kind on the file that is still in this status. */
+    boolean existsByFileIdAndAuthorIdAndStatus(Long fileId, Long authorId, Status status);
 }

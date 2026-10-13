@@ -137,11 +137,15 @@ public class GenerationService {
         }
     }
 
-    /** Any member of the file's course may ask for a summary, at the level they choose. */
+    /**
+     * Any member of the file's course may ask for a summary, at the level they choose. A member has one summary at a
+     * time running on a file: asking again before it finishes is a {@link GenerationPendingException}.
+     */
     @Transactional
     public Summary requestSummary(User user, Long fileId, SummaryLevel level) {
         CourseFile file = fileService.get(user, fileId);
         Role role = membership.roleOf(user, file.getCourse());
+        requireNonePending(summaries, file, user);
         Summary summary = new Summary();
         summary.setLevel(level);
         begin(summary, file, user, role);
@@ -150,13 +154,18 @@ public class GenerationService {
         return saved;
     }
 
-    /** Only the Teacher of the file's course may ask for an exercise set. */
+    /**
+     * Any member of the file's course may ask for an exercise set, with the types, difficulty and count they choose.
+     * A Teacher's set is published, a Student's is private. A member has one exercise set at a time running on a file.
+     */
     @Transactional
-    public ExerciseSet requestExerciseSet(User user, Long fileId) {
+    public ExerciseSet requestExerciseSet(User user, Long fileId, ExerciseOptions options) {
         CourseFile file = fileService.get(user, fileId);
-        membership.requireTeacher(user, file.getCourse());
+        Role role = membership.roleOf(user, file.getCourse());
+        requireNonePending(exerciseSets, file, user);
         ExerciseSet set = new ExerciseSet();
-        begin(set, file, user, Role.TEACHER);
+        set.setOptions(options);
+        begin(set, file, user, role);
         ExerciseSet saved = exerciseSets.save(set);
         afterCommit(() -> run(saved.getId(), exerciseSets, this::exercise));
         return saved;
@@ -182,6 +191,12 @@ public class GenerationService {
             return mapper.readValue(set.getExercisesJson(), EXERCISE_LIST);
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException(e);
+        }
+    }
+
+    private static void requireNonePending(GeneratedRepository<?> repository, CourseFile file, User user) {
+        if (repository.existsByFileIdAndAuthorIdAndStatus(file.getId(), user.getId(), Status.PENDING)) {
+            throw new GenerationPendingException();
         }
     }
 
@@ -220,7 +235,7 @@ public class GenerationService {
     }
 
     private void exercise(ExerciseSet set) {
-        List<Exercise> exercises = textGeneration.generateExercises(textOf(set.getFile()), ExerciseOptions.DEFAULT);
+        List<Exercise> exercises = textGeneration.generateExercises(textOf(set.getFile()), set.getOptions());
         try {
             set.setExercisesJson(mapper.writeValueAsString(exercises));
         } catch (JsonProcessingException e) {

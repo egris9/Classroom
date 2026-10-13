@@ -29,7 +29,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.emptyString;
 import static org.mockito.ArgumentMatchers.any;
@@ -168,6 +170,16 @@ class ToolsTest extends ToolsTestSupport {
         upload("/api/tools/summaries", newIp(), null, pdfBytes(LESSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").value(containsString("Photosynthesis turns light")));
+    }
+
+    @Test
+    void toolsExercisesAreFiveOpenQuestionsInTheNewShape() throws Exception {
+        send("/api/tools/exercise-sets", newIp(), null, LESSON)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exercises", hasSize(5)))
+                .andExpect(jsonPath("$.exercises[*].type", everyItem(is("OPEN"))))
+                .andExpect(jsonPath("$.exercises[0].options", hasSize(0)))
+                .andExpect(jsonPath("$.exercises[0].explanation").doesNotExist());
     }
 
     @Test
