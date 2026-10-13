@@ -16,8 +16,9 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * Runs every PDF in a folder through both operations of a {@link TextGeneration} and writes what came out, with the
- * time each took, so a person can read the results and judge the model. A failure is recorded and the run goes on.
+ * Runs every PDF in a folder through both operations of a {@link TextGeneration} (a summary at each level, and an
+ * exercise set) and writes what came out, with the time each took and the word count of each summary, so a person
+ * can read the results and judge the model. A failure is recorded and the run goes on.
  */
 final class EvalRunner {
 
@@ -64,12 +65,21 @@ final class EvalRunner {
             text = pdfText.read(new FileSystemResource(pdf)).text();
         } catch (GenerationFailure failure) {
             String report = "FAILED " + failure.code() + ": " + failure.getMessage();
-            Files.writeString(outDir.resolve(base + ".summary.txt"), report, StandardCharsets.UTF_8);
+            List<EvalResult.LevelResult> unread = new ArrayList<>();
+            for (SummaryLevel level : SummaryLevel.values()) {
+                Files.writeString(summaryFile(outDir, base, level), report, StandardCharsets.UTF_8);
+                unread.add(new EvalResult.LevelResult(level, failure.code(), 0, 0));
+            }
             Files.writeString(outDir.resolve(base + ".exercises.json"), report, StandardCharsets.UTF_8);
-            return new EvalResult(fileName, 0, failure.code(), 0, failure.code(), 0);
+            return new EvalResult(fileName, 0, unread, failure.code(), 0);
         }
-        Timed summary = timed(() -> generation.summarize(text, SummaryLevel.MEDIUM));
-        Files.writeString(outDir.resolve(base + ".summary.txt"), summary.output(), StandardCharsets.UTF_8);
+        List<EvalResult.LevelResult> summaries = new ArrayList<>();
+        for (SummaryLevel level : SummaryLevel.values()) {
+            Timed summary = timed(() -> generation.summarize(text, level));
+            Files.writeString(summaryFile(outDir, base, level), summary.output(), StandardCharsets.UTF_8);
+            int words = summary.status().equals("DONE") ? summary.output().strip().split("\\s+").length : 0;
+            summaries.add(new EvalResult.LevelResult(level, summary.status(), words, summary.millis()));
+        }
         Timed exercises = timed(() -> {
             try {
                 return mapper.writeValueAsString(generation.generateExercises(text, exercisesPerSet));
@@ -78,8 +88,11 @@ final class EvalRunner {
             }
         });
         Files.writeString(outDir.resolve(base + ".exercises.json"), exercises.output(), StandardCharsets.UTF_8);
-        return new EvalResult(fileName, text.length(), summary.status(), summary.millis(),
-                exercises.status(), exercises.millis());
+        return new EvalResult(fileName, text.length(), summaries, exercises.status(), exercises.millis());
+    }
+
+    private static Path summaryFile(Path outDir, String base, SummaryLevel level) {
+        return outDir.resolve(base + ".summary." + level.name().toLowerCase(Locale.ROOT) + ".txt");
     }
 
     private record Timed(String status, long millis, String output) {
@@ -100,12 +113,21 @@ final class EvalRunner {
 
     private String table(List<EvalResult> results) {
         StringBuilder table = new StringBuilder("# Eval results\n\nModel: " + generation.modelName() + "\n\n"
-                + "| PDF | Text chars | Summary | Summary ms | Exercises | Exercises ms |\n"
+                + "## Summaries\n\n"
+                + "| PDF | Text chars | Level | Status | Words | ms |\n"
                 + "|---|---|---|---|---|---|\n");
         for (EvalResult r : results) {
-            table.append("| ").append(r.pdf()).append(" | ").append(r.textChars()).append(" | ")
-                    .append(r.summaryStatus()).append(" | ").append(r.summaryMillis()).append(" | ")
-                    .append(r.exercisesStatus()).append(" | ").append(r.exercisesMillis()).append(" |\n");
+            for (EvalResult.LevelResult summary : r.summaries()) {
+                table.append("| ").append(r.pdf()).append(" | ").append(r.textChars()).append(" | ")
+                        .append(summary.level().name().toLowerCase(Locale.ROOT)).append(" | ")
+                        .append(summary.status()).append(" | ").append(summary.words()).append(" | ")
+                        .append(summary.millis()).append(" |\n");
+            }
+        }
+        table.append("\n## Exercises\n\n| PDF | Status | ms |\n|---|---|---|\n");
+        for (EvalResult r : results) {
+            table.append("| ").append(r.pdf()).append(" | ").append(r.exercisesStatus()).append(" | ")
+                    .append(r.exercisesMillis()).append(" |\n");
         }
         return table.toString();
     }

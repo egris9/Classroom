@@ -33,6 +33,8 @@ The backend reads environment variables, and also a `.env` file in the repo root
 | `GENERATION_BASE_URL` | empty | Model server url, for example `http://127.0.0.1:8081`. Required when the adapter is `local`. |
 | `GENERATION_MODEL` | empty | Model name sent with each request |
 | `GENERATION_TIMEOUT` | `120s` | Time allowed for one call to the model (for a streamed chat reply, the longest silence between two pieces) |
+| `GENERATION_LONG_TIMEOUT` | `240s` | Time allowed for one call to the model when the summary asked for is long or extra long |
+| `GENERATION_SUMMARY_MAX_TOKENS` | `250,700,1400,2400` | Most tokens one summary may take: short, medium, long, extra long. A summary that the cap cuts off fails with `BAD_OUTPUT` and is not stored. |
 | `GENERATION_CHUNK_CHARS` | `10000` | Longest piece of text sent to the model at once |
 | `GENERATION_MAX_CHUNKS` | `40` | A document with more pieces fails with `TOO_LONG` |
 | `GENERATION_OCR_ADAPTER` | `none` | `none` or `tesseract`. `none` switches OCR off: a PDF is read from its own text only. See [OCR](#ocr). |
@@ -98,6 +100,8 @@ GENERATION_ADAPTER=local
 GENERATION_BASE_URL=http://127.0.0.1:8081
 GENERATION_MODEL=unsloth/Qwen3.5-4B-GGUF:Q4_K_M
 ```
+
+A summary is asked for at a level: short (an overview and 3 points), medium (an overview and 4 to 8 points), long (sections with headings) or extra long (more sections and a list of key terms). The longer levels take longer to write, so they have their own time limit, and each level has a token cap (see the table above); on a slower machine or a larger model, raise `GENERATION_LONG_TIMEOUT`.
 
 Requests run one at a time. If the server is down, a request fails within the timeout with the code `MODEL_UNAVAILABLE`, shown on the file. To read what the model writes for your own PDFs, use the eval command in [eval/README.md](eval/README.md).
 

@@ -59,12 +59,38 @@ class EvalRunnerTest {
         assertThat(results).hasSize(1);
         EvalResult result = results.get(0);
         assertThat(result.pdf()).isEqualTo("biology.pdf");
-        assertThat(result.summaryStatus()).isEqualTo("DONE");
         assertThat(result.exercisesStatus()).isEqualTo("DONE");
         assertThat(result.textChars()).isGreaterThan(0);
-        assertThat(result.summaryMillis()).isGreaterThanOrEqualTo(0);
-        assertThat(Files.readString(out().resolve("biology.summary.txt"))).startsWith("Demo summary (no model connected): ");
+        assertThat(result.summaries()).extracting(EvalResult.LevelResult::level).containsExactly(SummaryLevel.values());
+        assertThat(result.summaries()).allSatisfy(summary -> {
+            assertThat(summary.status()).isEqualTo("DONE");
+            assertThat(summary.millis()).isGreaterThanOrEqualTo(0);
+        });
+        for (String level : List.of("short", "medium", "long", "extra_long")) {
+            assertThat(Files.readString(out().resolve("biology.summary." + level + ".txt")))
+                    .startsWith("Demo summary (no model connected): ");
+        }
         assertThat(Files.readString(out().resolve("biology.exercises.json"))).contains("\"question\"").contains("\"answer\"");
+    }
+
+    @Test
+    void each_level_is_recorded_with_the_word_count_of_its_summary() throws IOException {
+        writePdf(pdfs().resolve("biology.pdf"), "Light becomes sugar. ".repeat(20).strip());
+
+        EvalResult result = runner().run(pdfs(), out()).get(0);
+
+        for (EvalResult.LevelResult summary : result.summaries()) {
+            String file = "biology.summary." + summary.level().name().toLowerCase() + ".txt";
+            assertThat(summary.words()).as(file)
+                    .isEqualTo(Files.readString(out().resolve(file)).strip().split("\\s+").length);
+        }
+        assertThat(result.summaries()).extracting(EvalResult.LevelResult::words).isSorted().doesNotHaveDuplicates();
+        String table = Files.readString(out().resolve("results.md"));
+        assertThat(table).contains("| Level | Status | Words | ms |");
+        for (EvalResult.LevelResult summary : result.summaries()) {
+            assertThat(table).contains("| biology.pdf | " + result.textChars() + " | "
+                    + summary.level().name().toLowerCase() + " | DONE | " + summary.words() + " | ");
+        }
     }
 
     @Test
@@ -86,9 +112,12 @@ class EvalRunnerTest {
 
         List<EvalResult> results = runner().run(pdfs(), out());
 
-        assertThat(results.get(0).summaryStatus()).isEqualTo("NO_TEXT");
+        assertThat(results.get(0).summaries()).hasSize(4)
+                .allSatisfy(summary -> assertThat(summary.status()).isEqualTo("NO_TEXT"));
         assertThat(results.get(0).exercisesStatus()).isEqualTo("NO_TEXT");
-        assertThat(results.get(1).summaryStatus()).isEqualTo("DONE");
+        assertThat(Files.readString(out().resolve("a-scan.summary.extra_long.txt"))).startsWith("FAILED NO_TEXT");
+        assertThat(results.get(1).summaries()).hasSize(4)
+                .allSatisfy(summary -> assertThat(summary.status()).isEqualTo("DONE"));
     }
 
     @Test
@@ -97,7 +126,8 @@ class EvalRunnerTest {
 
         List<EvalResult> results = runner().run(pdfs(), out());
 
-        assertThat(results.get(0).summaryStatus()).isEqualTo("PDF_UNREADABLE");
+        assertThat(results.get(0).summaries()).hasSize(4)
+                .allSatisfy(summary -> assertThat(summary.status()).isEqualTo("PDF_UNREADABLE"));
     }
 
     @Test

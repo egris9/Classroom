@@ -63,7 +63,210 @@ class LocalTextGenerationTest {
         assertThat(system).contains("in your own words").contains("Do not copy sentences").contains("no ellipses");
     }
 
-    private static final String ARABIC = "صلح الحديبية هو اتفاق عقد بين المسلمين وقريش في السنة السادسة للهجرة";
+    // --- summary levels ---
+
+    private static final String MEDIUM_PROMPT = "You summarise course material for students. "
+            + "Write the summary in your own words. Do not copy sentences from the text, and use no ellipses. "
+            + "Start with an overview of one or two sentences, then give 4 to 8 bullet points with the key points, "
+            + "and put the key terms in bold. Answer in the language of the text.";
+
+    /** An adapter with its own time limit for the long levels and its own token caps, in level order. */
+    private LocalTextGeneration adapter(Duration timeout, Duration longTimeout, int chunkChars, List<Integer> caps) {
+        return new LocalTextGeneration(server.baseUrl(), MODEL, timeout, longTimeout, chunkChars,
+                LocalTextGeneration.DEFAULT_MAX_CHUNKS, caps, new ObjectMapper());
+    }
+
+    @Test
+    void mediumPromptIsUnchanged() {
+        adapter().summarize("Photosynthesis turns light into sugar.", SummaryLevel.MEDIUM);
+
+        assertThat(system(0)).contains("4 to 8 bullet points").isEqualTo(MEDIUM_PROMPT);
+    }
+
+    @Test
+    void eachLevelSendsItsOwnFormat() {
+        for (SummaryLevel level : SummaryLevel.values()) {
+            adapter().summarize("Photosynthesis turns light into sugar.", level);
+        }
+
+        assertThat(system(0)).contains("overview of one sentence").contains("exactly 3 bullet points");
+        assertThat(system(1)).contains("4 to 8 bullet points");
+        assertThat(system(2)).contains("overview of two or three sentences").contains("3 to 5 sections")
+                .contains("starts with '## '").contains("if the text is short, write less");
+        assertThat(system(3)).contains("overview of three or four sentences").contains("5 to 8 sections")
+                .contains("'## Key terms'").contains("one-line definition").contains("if the text is short, write less");
+        assertThat(List.of(system(0), system(1), system(2), system(3))).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void everyLevelStillAsksForOwnWordsAndNoEllipses() {
+        for (SummaryLevel level : SummaryLevel.values()) {
+            adapter().summarize("Photosynthesis turns light into sugar.", level);
+        }
+
+        for (int i = 0; i < SummaryLevel.values().length; i++) {
+            assertThat(system(i)).as("level %s", SummaryLevel.values()[i])
+                    .contains("Write the summary in your own words. Do not copy sentences from the text, and use no ellipses.")
+                    .endsWith("Answer in the language of the text.");
+        }
+    }
+
+    @Test
+    void anArabicTextNamesItsLanguageAtEveryLevel() {
+        for (SummaryLevel level : SummaryLevel.values()) {
+            adapter().summarize(ARABIC, level);
+        }
+
+        for (int i = 0; i < SummaryLevel.values().length; i++) {
+            assertThat(system(i)).as("level %s", SummaryLevel.values()[i]).endsWith("answer in Arabic.");
+        }
+    }
+
+    @Test
+    void partsOfALongDocumentUseTheDetailedPartPromptForLongAndExtraLong() {
+        server.replyWith(user -> "S");
+
+        for (SummaryLevel level : List.of(SummaryLevel.LONG, SummaryLevel.EXTRA_LONG)) {
+            int before = server.requests().size();
+            adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60), level);
+            int last = server.requests().size() - 1;
+
+            assertThat(last - before).as("parts of %s", level).isGreaterThan(1);
+            for (int i = before; i < last; i++) {
+                assertThat(system(i)).as("part %s of %s", i, level)
+                        .contains("one part of a longer course document")
+                        .contains("6 to 12 bullet points with the key points and the details that support them")
+                        .doesNotContain("sections");
+            }
+            assertThat(system(last)).as("combining request of %s", level)
+                    .contains("summaries of consecutive parts")
+                    .contains(level == SummaryLevel.LONG ? "3 to 5 sections" : "5 to 8 sections");
+        }
+    }
+
+    @Test
+    void partsOfALongDocumentKeepTheOldPartPromptForShortAndMedium() {
+        server.replyWith(user -> "S");
+
+        for (SummaryLevel level : List.of(SummaryLevel.SHORT, SummaryLevel.MEDIUM)) {
+            int before = server.requests().size();
+            adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60), level);
+            int last = server.requests().size() - 1;
+
+            for (int i = before; i < last; i++) {
+                assertThat(system(i)).as("part %s of %s", i, level)
+                        .contains("one part of a longer course document").contains("4 to 8 bullet points");
+            }
+            assertThat(system(last)).as("combining request of %s", level)
+                    .contains(level == SummaryLevel.SHORT ? "exactly 3 bullet points" : "4 to 8 bullet points");
+        }
+    }
+
+    private int maxTokens(int request) {
+        return server.requests().get(request).path("max_tokens").asInt(-1);
+    }
+
+    @Test
+    void aSummaryCallCarriesTheTokenCapOfItsLevel() {
+        LocalTextGeneration capped = adapter(Duration.ofSeconds(5), Duration.ofSeconds(5), 10_000, List.of(11, 22, 33, 44));
+
+        for (SummaryLevel level : SummaryLevel.values()) {
+            capped.summarize("Photosynthesis turns light into sugar.", level);
+        }
+
+        assertThat(List.of(maxTokens(0), maxTokens(1), maxTokens(2), maxTokens(3))).containsExactly(11, 22, 33, 44);
+    }
+
+    @Test
+    void aPartCallCarriesTheMediumOrTheLongCapAndTheCombiningCallTheLevelsOwn() {
+        server.replyWith(user -> "S");
+        LocalTextGeneration capped = adapter(Duration.ofSeconds(5), Duration.ofSeconds(5), 150, List.of(11, 22, 33, 44));
+        int[] partCap = {22, 22, 33, 33};
+        int[] ownCap = {11, 22, 33, 44};
+
+        for (SummaryLevel level : SummaryLevel.values()) {
+            int before = server.requests().size();
+            capped.summarize(words(60), level);
+            int last = server.requests().size() - 1;
+
+            for (int i = before; i < last; i++) {
+                assertThat(maxTokens(i)).as("part %s of %s", i, level).isEqualTo(partCap[level.ordinal()]);
+            }
+            assertThat(maxTokens(last)).as("combining request of %s", level).isEqualTo(ownCap[level.ordinal()]);
+        }
+    }
+
+    @Test
+    void theDefaultTokenCapsAreTheConfiguredDefaults() {
+        for (SummaryLevel level : SummaryLevel.values()) {
+            adapter().summarize("Photosynthesis turns light into sugar.", level);
+        }
+
+        assertThat(List.of(maxTokens(0), maxTokens(1), maxTokens(2), maxTokens(3)))
+                .containsExactlyElementsOf(LocalTextGeneration.DEFAULT_SUMMARY_MAX_TOKENS);
+    }
+
+    @Test
+    void aSummaryCutByTheTokenCapFailsBadOutput() {
+        server.replyWith(user -> "The summary stops in the mid").finishesWith("length");
+
+        assertThatThrownBy(() -> adapter().summarize("Some text.", SummaryLevel.EXTRA_LONG))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> {
+                    assertThat(f.code()).isEqualTo("BAD_OUTPUT");
+                    assertThat(f.getMessage()).isEqualTo("The summary was cut short. Try a shorter level.");
+                });
+    }
+
+    @Test
+    void aPartCutByTheTokenCapFailsBadOutputBeforeAnyOtherRequest() {
+        server.replyWith(user -> "S").finishesWith("length");
+
+        assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60), SummaryLevel.LONG))
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
+        assertThat(server.requests()).hasSize(1);
+    }
+
+    @Test
+    void longLevelsUseTheLongTimeout() {
+        server.replyWith(user -> "S").delayBy(900);
+        LocalTextGeneration adapter = adapter(Duration.ofMillis(300), Duration.ofSeconds(10), 10_000,
+                LocalTextGeneration.DEFAULT_SUMMARY_MAX_TOKENS);
+
+        assertThat(adapter.summarize("Some text.", SummaryLevel.LONG)).isEqualTo("S");
+        assertThat(adapter.summarize("Some text.", SummaryLevel.EXTRA_LONG)).isEqualTo("S");
+        for (SummaryLevel level : List.of(SummaryLevel.SHORT, SummaryLevel.MEDIUM)) {
+            assertFailsWith("MODEL_TIMEOUT", () -> adapter.summarize("Some text.", level));
+        }
+    }
+
+    @Test
+    void aLongLevelSlowerThanTheLongTimeoutFailsWithModelTimeout() {
+        server.delayBy(1500);
+        LocalTextGeneration adapter = adapter(Duration.ofSeconds(10), Duration.ofMillis(300), 10_000,
+                LocalTextGeneration.DEFAULT_SUMMARY_MAX_TOKENS);
+
+        assertFailsWith("MODEL_TIMEOUT", () -> adapter.summarize("Some text.", SummaryLevel.EXTRA_LONG));
+    }
+
+    @Test
+    void tokenCapsThatAreNotFourPositiveNumbersAreRefusedAtConstruction() {
+        for (List<Integer> bad : List.of(List.of(250, 700, 1400), List.of(250, 700, 1400, 2400, 3000), List.of(250, 0, 1400, 2400))) {
+            assertThatThrownBy(() -> adapter(Duration.ofSeconds(5), Duration.ofSeconds(5), 10_000, bad))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("generation.summary.max-tokens");
+        }
+    }
+
+    @Test
+    void aMissingOrNonPositiveLongTimeoutIsRefusedAtConstruction() {
+        for (Duration bad : new Duration[]{null, Duration.ZERO, Duration.ofSeconds(-1)}) {
+            assertThatThrownBy(() -> adapter(Duration.ofSeconds(5), bad, 10_000, LocalTextGeneration.DEFAULT_SUMMARY_MAX_TOKENS))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("generation.long-timeout");
+        }
+    }
+
+    private static final String ARABIC ="صلح الحديبية هو اتفاق عقد بين المسلمين وقريش في السنة السادسة للهجرة";
 
     private String system(int request) {
         return server.requests().get(request).path("messages").path(0).path("content").asText();

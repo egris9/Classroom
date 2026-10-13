@@ -3,8 +3,6 @@ package com.Classroom_ai.Classroom.generation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -20,7 +18,7 @@ class LocalTextGenerationContractTest extends TextGenerationContract {
 
     @BeforeEach
     void startServer() throws IOException {
-        server = new StubModelServer().replyWith(user -> {
+        server = new StubModelServer().replyToPrompt((system, user) -> {
             Matcher asked = ASKED.matcher(user);
             if (asked.find()) {
                 StringBuilder json = new StringBuilder("[");
@@ -29,20 +27,25 @@ class LocalTextGenerationContractTest extends TextGenerationContract {
                 }
                 return json.append("]").toString();
             }
-            return "A short summary.";
+            return summaryFor(system);
         });
+    }
+
+    /** A well-behaved model writes more when the format it is given asks for more. */
+    private static String summaryFor(String system) {
+        String sentence = "A short summary. ";
+        if (system.contains("5 to 8 sections")) {
+            return sentence.repeat(8).strip();
+        }
+        if (system.contains("3 to 5 sections")) {
+            return sentence.repeat(4).strip();
+        }
+        return system.contains("exactly 3 bullet points") ? "A summary." : sentence.repeat(2).strip();
     }
 
     @AfterEach
     void stopServer() {
         server.close();
-    }
-
-    @Test
-    @Disabled("F1.2")
-    @Override
-    void levelsGrowInLength() {
-        super.levelsGrowInLength();
     }
 
     @Override

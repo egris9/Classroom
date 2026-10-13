@@ -3,6 +3,8 @@ package com.Classroom_ai.Classroom.generation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,6 +23,8 @@ import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
@@ -41,22 +45,27 @@ public class LocalTextGeneration implements TextGeneration {
     private static final Pattern THINK_BLOCK = Pattern.compile("(?s)<think>.*?</think>");
     private static final int MAX_ROUNDS = 5;
     static final int DEFAULT_MAX_CHUNKS = 40;
+    static final Duration DEFAULT_LONG_TIMEOUT = Duration.ofSeconds(240);
+    /** The most tokens a summary may take, for short, medium, long and extra long. */
+    static final List<Integer> DEFAULT_SUMMARY_MAX_TOKENS = List.of(250, 700, 1400, 2400);
 
-    private static final String SUMMARY_FORMAT =
-            "Write the summary in your own words. Do not copy sentences from the text, and use no ellipses. "
-                    + "Start with an overview of one or two sentences, then give 4 to 8 bullet points with the key "
-                    + "points, and put the key terms in bold. Answer in the language of the text.";
-    private static final String SUMMARISE =
-            "You summarise course material for students. " + SUMMARY_FORMAT;
-    private static final String SUMMARISE_PART =
-            "You summarise one part of a longer course document. Keep the key points. " + SUMMARY_FORMAT;
+    private static final String OWN_WORDS =
+            "Write the summary in your own words. Do not copy sentences from the text, and use no ellipses. ";
+    private static final String SAME_LANGUAGE = " Answer in the language of the text.";
+    private static final String ONLY_THE_TEXT = " Use only what the text says: if the text is short, write less.";
+    private static final String SUMMARISE = "You summarise course material for students. ";
+    private static final String SUMMARISE_PART = "You summarise one part of a longer course document. ";
+    private static final String PART_DETAILED = OWN_WORDS
+            + "Give 6 to 12 bullet points with the key points and the details that support them, and put the key "
+            + "terms in bold." + SAME_LANGUAGE;
+    private static final String CUT_SHORT = "length";
     private static final String EXERCISES =
             "You write exercises for students from course material. An exercise is an open question with a model "
                     + "answer. Write in the language of the text. Reply with only a JSON array of objects with the "
                     + "keys \"question\" and \"answer\".";
     private static final String COMBINE =
             "You are given summaries of consecutive parts of one course document. Write one summary of the whole "
-                    + "document. " + SUMMARY_FORMAT;
+                    + "document. ";
     private static final String CHAT =
             "You are a study assistant for course material. Answer briefly, in the language the user writes in. "
                     + "If you do not know the answer, say that you do not know instead of inventing one.";
@@ -76,9 +85,13 @@ public class LocalTextGeneration implements TextGeneration {
         WATCHDOG.setRemoveOnCancelPolicy(true);
     }
 
+    private static final Logger log = LoggerFactory.getLogger(LocalTextGeneration.class);
+
     private final URI endpoint;
     private final String model;
     private final Duration timeout;
+    private final Duration longTimeout;
+    private final Map<SummaryLevel, Integer> summaryMaxTokens = new EnumMap<>(SummaryLevel.class);
     private final int chunkChars;
     private final int maxChunks;
     private final ObjectMapper mapper;
@@ -88,12 +101,19 @@ public class LocalTextGeneration implements TextGeneration {
         this(baseUrl, model, timeout, chunkChars, DEFAULT_MAX_CHUNKS, mapper);
     }
 
+    LocalTextGeneration(String baseUrl, String model, Duration timeout, int chunkChars, int maxChunks,
+                        ObjectMapper mapper) {
+        this(baseUrl, model, timeout, DEFAULT_LONG_TIMEOUT, chunkChars, maxChunks, DEFAULT_SUMMARY_MAX_TOKENS, mapper);
+    }
+
     @Autowired
     public LocalTextGeneration(@Value("${generation.base-url:}") String baseUrl,
                                @Value("${generation.model:}") String model,
                                @Value("${generation.timeout:120s}") Duration timeout,
+                               @Value("${generation.long-timeout:240s}") Duration longTimeout,
                                @Value("${generation.chunk-chars:10000}") int chunkChars,
                                @Value("${generation.max-chunks:40}") int maxChunks,
+                               @Value("${generation.summary.max-tokens:250,700,1400,2400}") List<Integer> summaryMaxTokens,
                                ObjectMapper mapper) {
         if (baseUrl == null || baseUrl.isBlank()) {
             throw new IllegalStateException("generation.base-url must be set when generation.adapter=local");
@@ -107,6 +127,19 @@ public class LocalTextGeneration implements TextGeneration {
         if (timeout == null || timeout.isZero() || timeout.isNegative()) {
             throw new IllegalStateException("generation.timeout must be a positive duration such as 120s");
         }
+        if (longTimeout == null || longTimeout.isZero() || longTimeout.isNegative()) {
+            throw new IllegalStateException("generation.long-timeout must be a positive duration such as 240s");
+        }
+        SummaryLevel[] levels = SummaryLevel.values();
+        if (summaryMaxTokens == null || summaryMaxTokens.size() != levels.length
+                || summaryMaxTokens.stream().anyMatch(cap -> cap == null || cap < 1)) {
+            throw new IllegalStateException("generation.summary.max-tokens must be four positive numbers, for a "
+                    + "short, a medium, a long and an extra long summary, such as 250,700,1400,2400");
+        }
+        for (SummaryLevel level : levels) {
+            this.summaryMaxTokens.put(level, summaryMaxTokens.get(level.ordinal()));
+        }
+        this.longTimeout = longTimeout;
         this.maxChunks = maxChunks;
         this.endpoint = URI.create(baseUrl.strip().replaceAll("/+$", "") + "/v1/chat/completions");
         this.model = model;
@@ -119,26 +152,54 @@ public class LocalTextGeneration implements TextGeneration {
     /**
      * Text that fits in one chunk is summarised in one request. Longer text is cut into chunks, each chunk is
      * summarised, and the summaries are joined and summarised in turn, again in chunks if they are still too long.
+     * The level sets the format of the summary; the parts of a long or extra long one are asked for in more detail,
+     * so the whole has enough to draw on.
      */
     @Override
     public String summarize(String text, SummaryLevel level) {
         List<String> chunks = chunksOf(text);
         String language = languageOf(text);
         if (chunks.size() == 1) {
-            return summary(SUMMARISE + language, chunks.get(0));
+            return summary("whole", SUMMARISE + formatOf(level) + language, chunks.get(0), level, level);
         }
+        boolean detailed = isLong(level);
+        String partFormat = detailed ? PART_DETAILED : "Keep the key points. " + formatOf(SummaryLevel.MEDIUM);
+        SummaryLevel partCap = detailed ? SummaryLevel.LONG : SummaryLevel.MEDIUM;
         for (int round = 0; round < MAX_ROUNDS; round++) {
             List<String> summaries = new ArrayList<>();
             for (String chunk : chunks) {
-                summaries.add(summary(SUMMARISE_PART + language, chunk));
+                summaries.add(summary("part", SUMMARISE_PART + partFormat + language, chunk, level, partCap));
             }
             String joined = String.join("\n\n", summaries);
             if (joined.length() <= chunkChars) {
-                return summary(COMBINE + language, joined);
+                return summary("combined", COMBINE + formatOf(level) + language, joined, level, level);
             }
             chunks = split(joined);
         }
         throw new GenerationFailure("BAD_OUTPUT", "The model's summaries did not get shorter.");
+    }
+
+    /** What a summary of this level looks like. Every level is written in the model's own words and the text's language. */
+    private static String formatOf(SummaryLevel level) {
+        String shape = switch (level) {
+            case SHORT -> "Start with an overview of one sentence, then give exactly 3 bullet points with the key "
+                    + "points, and put the key terms in bold.";
+            case MEDIUM -> "Start with an overview of one or two sentences, then give 4 to 8 bullet points with the "
+                    + "key points, and put the key terms in bold.";
+            case LONG -> "Start with an overview of two or three sentences. Then write 3 to 5 sections. Each section "
+                    + "has a heading on its own line that starts with '## ' and 3 to 5 bullet points. Put the key "
+                    + "terms in bold." + ONLY_THE_TEXT;
+            case EXTRA_LONG -> "Start with an overview of three or four sentences. Then write 5 to 8 sections. Each "
+                    + "section has a heading on its own line that starts with '## ', one sentence that introduces "
+                    + "it, and 4 to 6 bullet points. End with a section headed '## Key terms', its heading written "
+                    + "in the language of the text, that lists each key term in bold with a one-line definition."
+                    + ONLY_THE_TEXT;
+        };
+        return OWN_WORDS + shape + SAME_LANGUAGE;
+    }
+
+    private static boolean isLong(SummaryLevel level) {
+        return level == SummaryLevel.LONG || level == SummaryLevel.EXTRA_LONG;
     }
 
     /**
@@ -162,13 +223,23 @@ public class LocalTextGeneration implements TextGeneration {
         return chunks;
     }
 
-    /** A reply to a summarising request; one with no text left in it is a failure, not a blank summary. */
-    private String summary(String system, String text) {
-        String reply = chat(system, text);
-        if (reply.isBlank()) {
+    /**
+     * A reply to a summarising request. It may take as many tokens as {@code cap}'s level allows and as long as the
+     * summary's own level allows. One that the cap cut off, or with no text left in it, is a failure, not a summary.
+     */
+    private String summary(String kind, String system, String text, SummaryLevel level, SummaryLevel cap) {
+        long start = System.nanoTime();
+        Reply reply = complete(List.of(message("system", system), message("user", text)),
+                summaryMaxTokens.get(cap), isLong(level) ? longTimeout : timeout);
+        log.debug("Summary call ({}, level {}): {} completion tokens in {} ms", kind, level,
+                reply.completionTokens(), (System.nanoTime() - start) / 1_000_000);
+        if (CUT_SHORT.equals(reply.finishReason())) {
+            throw new GenerationFailure("BAD_OUTPUT", "The summary was cut short. Try a shorter level.");
+        }
+        if (reply.text().isBlank()) {
             throw new GenerationFailure("BAD_OUTPUT", "The model returned an empty summary.");
         }
-        return reply;
+        return reply.text();
     }
 
     /** Cuts at whitespace so that no chunk is longer than the limit and no word is split. */
@@ -274,16 +345,11 @@ public class LocalTextGeneration implements TextGeneration {
         return model;
     }
 
-    /** One round trip: a system and a user message in, the assistant's text out. */
-    String chat(String system, String user) {
-        return chat(List.of(message("system", system), message("user", user)));
-    }
-
     private static Map<String, String> message(String role, String content) {
         return Map.of("role", role, "content", content);
     }
 
-    private HttpRequest request(Map<String, Object> body) {
+    private HttpRequest request(Map<String, Object> body, Duration timeout) {
         String json;
         try {
             json = mapper.writeValueAsString(body);
@@ -322,7 +388,7 @@ public class LocalTextGeneration implements TextGeneration {
                 "messages", messages,
                 "stream", true,
                 "temperature", 0.3,
-                "chat_template_kwargs", Map.of("enable_thinking", false)));
+                "chat_template_kwargs", Map.of("enable_thinking", false)), timeout);
         HttpResponse<InputStream> response = send(request, HttpResponse.BodyHandlers.ofInputStream());
         InputStream body = response.body();
         try {
@@ -478,23 +544,39 @@ public class LocalTextGeneration implements TextGeneration {
         }
     }
 
+    /** What came back from one request that is not streamed: its text, why it ended, and how many tokens it took. */
+    private record Reply(String text, String finishReason, int completionTokens) {
+    }
+
     private String chat(List<Map<String, String>> messages) {
-        HttpResponse<String> response = send(request(Map.of(
-                "model", model,
-                "messages", messages,
-                "temperature", 0.2,
-                "chat_template_kwargs", Map.of("enable_thinking", false))), HttpResponse.BodyHandlers.ofString());
+        return complete(messages, null, timeout).text();
+    }
+
+    /** One round trip. {@code maxTokens} caps the reply, or is null for no cap; the model has {@code timeout} to answer. */
+    private Reply complete(List<Map<String, String>> messages, Integer maxTokens, Duration timeout) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        body.put("messages", messages);
+        body.put("temperature", 0.2);
+        body.put("chat_template_kwargs", Map.of("enable_thinking", false));
+        if (maxTokens != null) {
+            body.put("max_tokens", maxTokens);
+        }
+        HttpResponse<String> response = send(request(body, timeout), HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
             throw new GenerationFailure("MODEL_ERROR", "The model server answered with status " + response.statusCode() + ".");
         }
         try {
-            JsonNode content = mapper.readTree(response.body()).path("choices").path(0).path("message").path("content");
+            JsonNode json = mapper.readTree(response.body());
+            JsonNode choice = json.path("choices").path(0);
+            JsonNode content = choice.path("message").path("content");
             if (!content.isTextual()) {
                 throw new GenerationFailure("MODEL_ERROR", "The model server sent a reply with no text.");
             }
             String reply = THINK_BLOCK.matcher(content.asText()).replaceAll("");
             int unfinished = reply.indexOf("<think>");
-            return (unfinished >= 0 ? reply.substring(0, unfinished) : reply).strip();
+            return new Reply((unfinished >= 0 ? reply.substring(0, unfinished) : reply).strip(),
+                    choice.path("finish_reason").asText(""), json.path("usage").path("completion_tokens").asInt(-1));
         } catch (JsonProcessingException e) {
             throw new GenerationFailure("MODEL_ERROR", "The model server sent a reply that is not JSON.", e);
         }
