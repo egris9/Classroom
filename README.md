@@ -34,7 +34,7 @@ The backend reads environment variables, and also a `.env` file in the repo root
 | `GENERATION_MODEL` | empty | Model name sent with each request |
 | `GENERATION_TIMEOUT` | `120s` | Time allowed for one call to the model (for a streamed chat reply, the longest silence between two pieces) |
 | `GENERATION_LONG_TIMEOUT` | `240s` | Time allowed for one call to the model when the summary asked for is long or extra long |
-| `GENERATION_SUMMARY_MAX_TOKENS` | `250,700,1400,2400` | Most tokens one summary may take: short, medium, long, extra long. A summary that the cap cuts off fails with `BAD_OUTPUT` and is not stored. |
+| `GENERATION_SUMMARY_MAX_TOKENS` | `400,900,1550,2450` | Most tokens one summary may take: short, medium, long, extra long. A summary that the cap cuts off fails with `BAD_OUTPUT` and is not stored. The defaults were measured with Qwen3.5 4B; the eval prints what another model writes. |
 | `GENERATION_CHUNK_CHARS` | `10000` | Longest piece of text sent to the model at once |
 | `GENERATION_MAX_CHUNKS` | `40` | A document with more pieces fails with `TOO_LONG` |
 | `GENERATION_OCR_ADAPTER` | `none` | `none` or `tesseract`. `none` switches OCR off: a PDF is read from its own text only. See [OCR](#ocr). |

@@ -1,8 +1,10 @@
 package com.Classroom_ai.Classroom.generation;
 
+import ch.qos.logback.classic.Level;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -23,6 +25,8 @@ class EvalRun {
     void run_every_pdf_in_eval_pdfs_through_the_local_model() throws Exception {
         String baseUrl = System.getenv("GENERATION_BASE_URL");
         assertThat(baseUrl).as("GENERATION_BASE_URL must name the model server").isNotBlank();
+        // Outside the app nothing sets log levels, and the lines that say what each summary call cost are DEBUG.
+        ((ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LocalTextGeneration.class)).setLevel(Level.DEBUG);
         Duration timeout = Duration.ofSeconds(Long.parseLong(System.getenv().getOrDefault("GENERATION_TIMEOUT_SECONDS", "300")));
         Duration longTimeout = Duration.ofSeconds(Long.parseLong(System.getenv().getOrDefault("GENERATION_LONG_TIMEOUT_SECONDS", "600")));
         int chunkChars = Integer.parseInt(System.getenv().getOrDefault("GENERATION_CHUNK_CHARS", "10000"));

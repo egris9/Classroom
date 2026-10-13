@@ -46,8 +46,11 @@ public class LocalTextGeneration implements TextGeneration {
     private static final int MAX_ROUNDS = 5;
     static final int DEFAULT_MAX_CHUNKS = 40;
     static final Duration DEFAULT_LONG_TIMEOUT = Duration.ofSeconds(240);
-    /** The most tokens a summary may take, for short, medium, long and extra long. */
-    static final List<Integer> DEFAULT_SUMMARY_MAX_TOKENS = List.of(250, 700, 1400, 2400);
+    /**
+     * The most tokens a summary may take, for short, medium, long and extra long: about one and a half times the
+     * most Qwen3.5 4B wrote for each level over two runs of three course PDFs (253, 577, 1008 and 1611 tokens).
+     */
+    static final List<Integer> DEFAULT_SUMMARY_MAX_TOKENS = List.of(400, 900, 1550, 2450);
 
     private static final String OWN_WORDS =
             "Write the summary in your own words. Do not copy sentences from the text, and use no ellipses. ";
@@ -113,7 +116,7 @@ public class LocalTextGeneration implements TextGeneration {
                                @Value("${generation.long-timeout:240s}") Duration longTimeout,
                                @Value("${generation.chunk-chars:10000}") int chunkChars,
                                @Value("${generation.max-chunks:40}") int maxChunks,
-                               @Value("${generation.summary.max-tokens:250,700,1400,2400}") List<Integer> summaryMaxTokens,
+                               @Value("${generation.summary.max-tokens:400,900,1550,2450}") List<Integer> summaryMaxTokens,
                                ObjectMapper mapper) {
         if (baseUrl == null || baseUrl.isBlank()) {
             throw new IllegalStateException("generation.base-url must be set when generation.adapter=local");
@@ -134,7 +137,7 @@ public class LocalTextGeneration implements TextGeneration {
         if (summaryMaxTokens == null || summaryMaxTokens.size() != levels.length
                 || summaryMaxTokens.stream().anyMatch(cap -> cap == null || cap < 1)) {
             throw new IllegalStateException("generation.summary.max-tokens must be four positive numbers, for a "
-                    + "short, a medium, a long and an extra long summary, such as 250,700,1400,2400");
+                    + "short, a medium, a long and an extra long summary, such as 400,900,1550,2450");
         }
         for (SummaryLevel level : levels) {
             this.summaryMaxTokens.put(level, summaryMaxTokens.get(level.ordinal()));
