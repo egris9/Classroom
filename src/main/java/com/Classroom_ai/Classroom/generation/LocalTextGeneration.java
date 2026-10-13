@@ -121,7 +121,7 @@ public class LocalTextGeneration implements TextGeneration {
      * summarised, and the summaries are joined and summarised in turn, again in chunks if they are still too long.
      */
     @Override
-    public String summarize(String text) {
+    public String summarize(String text, SummaryLevel level) {
         List<String> chunks = chunksOf(text);
         String language = languageOf(text);
         if (chunks.size() == 1) {

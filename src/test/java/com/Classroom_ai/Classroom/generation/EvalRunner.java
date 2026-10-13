@@ -68,7 +68,7 @@ final class EvalRunner {
             Files.writeString(outDir.resolve(base + ".exercises.json"), report, StandardCharsets.UTF_8);
             return new EvalResult(fileName, 0, failure.code(), 0, failure.code(), 0);
         }
-        Timed summary = timed(() -> generation.summarize(text));
+        Timed summary = timed(() -> generation.summarize(text, SummaryLevel.MEDIUM));
         Files.writeString(outDir.resolve(base + ".summary.txt"), summary.output(), StandardCharsets.UTF_8);
         Timed exercises = timed(() -> {
             try {

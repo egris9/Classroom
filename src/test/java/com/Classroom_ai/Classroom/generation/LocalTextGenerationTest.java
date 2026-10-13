@@ -47,7 +47,7 @@ class LocalTextGenerationTest {
     void summarize_sends_the_text_to_chat_completions_and_returns_the_reply() {
         server.replyWith(user -> "A short summary.");
 
-        String summary = adapter().summarize("Photosynthesis turns light into sugar.");
+        String summary = adapter().summarize("Photosynthesis turns light into sugar.", SummaryLevel.MEDIUM);
 
         assertThat(summary).isEqualTo("A short summary.");
         JsonNode request = server.requests().get(0);
@@ -57,7 +57,7 @@ class LocalTextGenerationTest {
 
     @Test
     void summaryRequestAsksForOwnWordsAndNoEllipsis() {
-        adapter().summarize("Photosynthesis turns light into sugar.");
+        adapter().summarize("Photosynthesis turns light into sugar.", SummaryLevel.MEDIUM);
 
         String system = server.requests().get(0).path("messages").path(0).path("content").asText();
         assertThat(system).contains("in your own words").contains("Do not copy sentences").contains("no ellipses");
@@ -71,22 +71,24 @@ class LocalTextGenerationTest {
 
     @Test
     void anArabicTextIsSummarisedWithItsLanguageNamed() {
-        adapter().summarize(ARABIC);
+        adapter().summarize(ARABIC, SummaryLevel.MEDIUM);
 
         assertThat(system(0)).contains("answer in Arabic");
     }
 
     @Test
     void arabicReadFromPageImagesWithStrayLatinWordsStillNamesTheLanguage() {
-        adapter().summarize("@ AlloSchool 9/13/2026\n" + ARABIC + " BE abo\nhttps://www.alloschool.com/element/1/doc");
+        adapter().summarize("@ AlloSchool 9/13/2026\n" + ARABIC + " BE abo\nhttps://www.alloschool.com/element/1/doc",
+                SummaryLevel.MEDIUM);
 
         assertThat(system(0)).contains("answer in Arabic");
     }
 
     @Test
     void aTextThatIsNotArabicGetsNoLanguageNamed() {
-        adapter().summarize("Photosynthesis turns light into sugar.");
-        adapter().summarize("La dérivée d'une fonction mesure sa variation. Le mot arabe صلح veut dire paix.");
+        adapter().summarize("Photosynthesis turns light into sugar.", SummaryLevel.MEDIUM);
+        adapter().summarize("La dérivée d'une fonction mesure sa variation. Le mot arabe صلح veut dire paix.",
+                SummaryLevel.MEDIUM);
 
         assertThat(system(0)).doesNotContain("Arabic");
         assertThat(system(1)).doesNotContain("Arabic");
@@ -96,7 +98,7 @@ class LocalTextGenerationTest {
     void everyRequestOfALongArabicSummaryNamesTheLanguage() {
         server.replyWith(user -> "S");
 
-        adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize((ARABIC + " ").repeat(8));
+        adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize((ARABIC + " ").repeat(8), SummaryLevel.MEDIUM);
 
         assertThat(server.requests().size()).isGreaterThan(2);
         for (int i = 0; i < server.requests().size(); i++) {
@@ -115,7 +117,7 @@ class LocalTextGenerationTest {
 
     @Test
     void requests_switch_the_model_thinking_off() {
-        adapter().summarize("Some text.");
+        adapter().summarize("Some text.", SummaryLevel.MEDIUM);
 
         assertThat(server.requests().get(0).path("chat_template_kwargs").path("enable_thinking").asBoolean(true))
                 .isFalse();
@@ -130,7 +132,7 @@ class LocalTextGenerationTest {
     void a_reply_has_its_think_block_removed() {
         server.replyWith(user -> "<think>let me think</think>\n\nThe summary.");
 
-        assertThat(adapter().summarize("Some text.")).isEqualTo("The summary.");
+        assertThat(adapter().summarize("Some text.", SummaryLevel.MEDIUM)).isEqualTo("The summary.");
     }
 
     @Test
@@ -141,7 +143,7 @@ class LocalTextGenerationTest {
         }
         LocalTextGeneration down = adapter("http://127.0.0.1:" + closedPort, Duration.ofSeconds(5), 10_000);
 
-        assertThatThrownBy(() -> down.summarize("Some text."))
+        assertThatThrownBy(() -> down.summarize("Some text.", SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("MODEL_UNAVAILABLE"));
     }
 
@@ -150,7 +152,7 @@ class LocalTextGenerationTest {
         server.delayBy(1500);
         LocalTextGeneration slow = adapter(server.baseUrl(), Duration.ofMillis(300), 10_000);
 
-        assertThatThrownBy(() -> slow.summarize("Some text."))
+        assertThatThrownBy(() -> slow.summarize("Some text.", SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("MODEL_TIMEOUT"));
     }
 
@@ -158,7 +160,7 @@ class LocalTextGenerationTest {
     void an_error_status_fails_with_MODEL_ERROR() {
         server.failWith(500);
 
-        assertThatThrownBy(() -> adapter().summarize("Some text."))
+        assertThatThrownBy(() -> adapter().summarize("Some text.", SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("MODEL_ERROR"));
     }
 
@@ -172,7 +174,7 @@ class LocalTextGenerationTest {
 
     @Test
     void text_that_fits_in_one_chunk_costs_one_request() {
-        adapter(server.baseUrl(), Duration.ofSeconds(5), 1000).summarize(words(20));
+        adapter(server.baseUrl(), Duration.ofSeconds(5), 1000).summarize(words(20), SummaryLevel.MEDIUM);
 
         assertThat(server.requests()).hasSize(1);
     }
@@ -182,7 +184,7 @@ class LocalTextGenerationTest {
         server.replyWith(user -> "S");
         String text = words(60);
 
-        String summary = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text);
+        String summary = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text, SummaryLevel.MEDIUM);
 
         int chunks = server.requests().size() - 1;
         assertThat(chunks).isGreaterThan(1);
@@ -195,7 +197,7 @@ class LocalTextGenerationTest {
         server.replyWith(user -> "S");
         String text = words(60);
 
-        adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text);
+        adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text, SummaryLevel.MEDIUM);
 
         StringBuilder sent = new StringBuilder();
         for (int i = 0; i < server.requests().size() - 1; i++) {
@@ -211,7 +213,7 @@ class LocalTextGenerationTest {
         server.replyWith(user -> user.startsWith("word") ? "x".repeat(100) : "short");
         String text = words(120);
 
-        String summary = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text);
+        String summary = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(text, SummaryLevel.MEDIUM);
 
         assertThat(summary).isEqualTo("short");
         for (JsonNode request : server.requests()) {
@@ -224,7 +226,7 @@ class LocalTextGenerationTest {
     void summaries_that_never_get_shorter_fail_with_BAD_OUTPUT() {
         server.replyWith(user -> "x".repeat(140));
 
-        assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(120)))
+        assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(120), SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
@@ -370,7 +372,7 @@ class LocalTextGenerationTest {
                 new ObjectMapper());
         String text = words(200);
 
-        assertThatThrownBy(() -> limited.summarize(text))
+        assertThatThrownBy(() -> limited.summarize(text, SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
         assertThatThrownBy(() -> limited.generateExercises(text, 5))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
@@ -381,7 +383,7 @@ class LocalTextGenerationTest {
     void a_reply_that_is_only_a_think_block_is_BAD_OUTPUT_not_a_blank_summary() {
         server.replyWith(user -> "<think>nothing else</think>");
 
-        assertThatThrownBy(() -> adapter().summarize("Some text."))
+        assertThatThrownBy(() -> adapter().summarize("Some text.", SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
@@ -389,7 +391,7 @@ class LocalTextGenerationTest {
     void a_blank_chunk_summary_does_not_reach_the_combining_request() {
         server.replyWith(user -> "  ");
 
-        assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60)))
+        assertThatThrownBy(() -> adapter(server.baseUrl(), Duration.ofSeconds(5), 150).summarize(words(60), SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
         assertThat(server.requests()).hasSize(1);
     }
@@ -398,14 +400,14 @@ class LocalTextGenerationTest {
     void an_unterminated_think_block_is_cut_off_and_never_stored() {
         server.replyWith(user -> "The summary.\n<think>reasoning that never ends");
 
-        assertThat(adapter().summarize("Some text.")).isEqualTo("The summary.");
+        assertThat(adapter().summarize("Some text.", SummaryLevel.MEDIUM)).isEqualTo("The summary.");
     }
 
     @Test
     void a_reply_that_is_only_an_unterminated_think_block_is_BAD_OUTPUT() {
         server.replyWith(user -> "<think>reasoning that never ends");
 
-        assertThatThrownBy(() -> adapter().summarize("Some text."))
+        assertThatThrownBy(() -> adapter().summarize("Some text.", SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 

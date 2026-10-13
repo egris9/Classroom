@@ -4,6 +4,7 @@ import com.Classroom_ai.Classroom.generation.Exercise;
 import com.Classroom_ai.Classroom.generation.FakeTextGeneration;
 import com.Classroom_ai.Classroom.generation.Ocr;
 import com.Classroom_ai.Classroom.generation.PdfText;
+import com.Classroom_ai.Classroom.generation.SummaryLevel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,9 +51,9 @@ class ToolsTest extends ToolsTestSupport {
         final AtomicInteger calls = new AtomicInteger();
 
         @Override
-        public String summarize(String text) {
+        public String summarize(String text, SummaryLevel level) {
             calls.incrementAndGet();
-            return super.summarize(text);
+            return super.summarize(text, level);
         }
 
         @Override

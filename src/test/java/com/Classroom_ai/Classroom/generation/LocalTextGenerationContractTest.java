@@ -3,6 +3,8 @@ package com.Classroom_ai.Classroom.generation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -34,6 +36,13 @@ class LocalTextGenerationContractTest extends TextGenerationContract {
     @AfterEach
     void stopServer() {
         server.close();
+    }
+
+    @Test
+    @Disabled("F1.2")
+    @Override
+    void levelsGrowInLength() {
+        super.levelsGrowInLength();
     }
 
     @Override

@@ -137,12 +137,13 @@ public class GenerationService {
         }
     }
 
-    /** Any member of the file's course may ask for a summary. */
+    /** Any member of the file's course may ask for a summary, at the level they choose. */
     @Transactional
-    public Summary requestSummary(User user, Long fileId) {
+    public Summary requestSummary(User user, Long fileId, SummaryLevel level) {
         CourseFile file = fileService.get(user, fileId);
         Role role = membership.roleOf(user, file.getCourse());
         Summary summary = new Summary();
+        summary.setLevel(level);
         begin(summary, file, user, role);
         Summary saved = summaries.save(summary);
         afterCommit(() -> run(saved.getId(), summaries, this::summarise));
@@ -215,7 +216,7 @@ public class GenerationService {
     }
 
     private void summarise(Summary summary) {
-        summary.setContent(textGeneration.summarize(textOf(summary.getFile())));
+        summary.setContent(textGeneration.summarize(textOf(summary.getFile()), summary.getLevel()));
     }
 
     private void exercise(ExerciseSet set) {

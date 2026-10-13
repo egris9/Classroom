@@ -37,14 +37,14 @@ abstract class TextGenerationContract {
 
     @Test
     void a_summary_is_not_blank() {
-        assertThat(adapter().summarize(lesson(600))).isNotBlank();
+        assertThat(adapter().summarize(lesson(600), SummaryLevel.MEDIUM)).isNotBlank();
     }
 
     @Test
     void a_summary_is_shorter_than_a_long_text() {
         String text = lesson(3000);
 
-        assertThat(adapter().summarize(text).length()).isLessThan(text.length());
+        assertThat(adapter().summarize(text, SummaryLevel.MEDIUM).length()).isLessThan(text.length());
     }
 
     /** The demo adapter quotes its source on purpose and says so; every real adapter must not. */
@@ -56,7 +56,7 @@ abstract class TextGenerationContract {
     void summaryIsNotAQuoteOfTheStart() {
         String text = lesson(3000);
 
-        String summary = adapter().summarize(text);
+        String summary = adapter().summarize(text, SummaryLevel.MEDIUM);
 
         if (!quotesItsSource()) {
             assertThat(summary).doesNotContain(text.substring(0, 80));
@@ -65,10 +65,25 @@ abstract class TextGenerationContract {
     }
 
     @Test
+    void levelsGrowInLength() {
+        String text = lesson(3000);
+        TextGeneration adapter = adapter();
+
+        int shortLength = adapter.summarize(text, SummaryLevel.SHORT).length();
+        int mediumLength = adapter.summarize(text, SummaryLevel.MEDIUM).length();
+        int longLength = adapter.summarize(text, SummaryLevel.LONG).length();
+        int extraLongLength = adapter.summarize(text, SummaryLevel.EXTRA_LONG).length();
+
+        assertThat(shortLength).isLessThan(mediumLength);
+        assertThat(mediumLength).isLessThan(longLength);
+        assertThat(longLength).isLessThan(extraLongLength);
+    }
+
+    @Test
     void a_text_longer_than_one_chunk_still_gets_a_summary() {
         String text = lesson(25_000);
 
-        String summary = adapter().summarize(text);
+        String summary = adapter().summarize(text, SummaryLevel.MEDIUM);
 
         assertThat(summary).isNotBlank();
         assertThat(summary.length()).isLessThan(text.length());

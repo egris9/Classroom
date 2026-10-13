@@ -2,12 +2,14 @@ package com.Classroom_ai.Classroom.generation;
 
 import com.Classroom_ai.Classroom.api.ExerciseResponse;
 import com.Classroom_ai.Classroom.api.ExerciseSetResponse;
+import com.Classroom_ai.Classroom.api.SummaryRequest;
 import com.Classroom_ai.Classroom.api.SummaryResponse;
 import com.Classroom_ai.Classroom.auth.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,8 +29,10 @@ public class GenerationController {
 
     @PostMapping("/summaries")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public SummaryResponse requestSummary(@PathVariable Long fileId) {
-        return respond(generation.requestSummary(userService.getAuthenticatedUser(), fileId));
+    public SummaryResponse requestSummary(@PathVariable Long fileId,
+                                          @RequestBody(required = false) SummaryRequest body) {
+        SummaryLevel level = body == null || body.level() == null ? SummaryLevel.MEDIUM : body.level();
+        return respond(generation.requestSummary(userService.getAuthenticatedUser(), fileId, level));
     }
 
     @GetMapping("/summaries")
@@ -50,7 +54,7 @@ public class GenerationController {
     }
 
     private static SummaryResponse respond(Summary s) {
-        return new SummaryResponse(s.getId(), s.getStatus().name(), s.getContent(), s.isPublished(),
+        return new SummaryResponse(s.getId(), s.getStatus().name(), s.getContent(), s.getLevel().name(), s.isPublished(),
                 s.getAuthor().getId(), s.getModel(), s.getFailureCode(), s.getFailureMessage(), s.getCreatedAt());
     }
 

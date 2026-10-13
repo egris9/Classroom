@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 /** The seam through which the app asks a model for summaries, exercises and chat replies. */
 public interface TextGeneration {
 
-    String summarize(String text);
+    String summarize(String text, SummaryLevel level);
 
     List<Exercise> generateExercises(String text, int count);
 
