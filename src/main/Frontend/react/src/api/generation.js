@@ -11,9 +11,12 @@ const call = async (request, fallback) => {
     }
 };
 
-/** Asks for a summary of the file. Resolves at once with a PENDING summary; poll listSummaries for the result. */
-export const requestSummary = (fileId) =>
-    call(() => client.post(`/api/files/${fileId}/summaries`), "Could not request the summary.");
+/**
+ * Asks for a summary of the file at a level (SHORT, MEDIUM, LONG or EXTRA_LONG). Resolves at once with a PENDING
+ * summary; poll listSummaries for the result.
+ */
+export const requestSummary = (fileId, level) =>
+    call(() => client.post(`/api/files/${fileId}/summaries`, { level }), "Could not request the summary.");
 
 /** The published summaries of the file plus the caller's own. */
 export const listSummaries = (fileId) =>

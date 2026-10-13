@@ -12,7 +12,18 @@ function element(Tag, className, dir) {
     };
 }
 
+// The card that holds the text has the h2, so whatever level the model writes its headings at, they are h3 here
+// and a heading below those an h4. The padding, not a margin, keeps a heading clear of the block above it.
+const HEADING = "pt-3 text-base font-semibold first:pt-0";
+const SUBHEADING = "pt-1 text-sm font-semibold first:pt-0";
+
 const components = {
+    h1: element("h3", HEADING, "auto"),
+    h2: element("h3", HEADING, "auto"),
+    h3: element("h3", HEADING, "auto"),
+    h4: element("h4", SUBHEADING, "auto"),
+    h5: element("h4", SUBHEADING, "auto"),
+    h6: element("h4", SUBHEADING, "auto"),
     p: element("p", "text-sm leading-reading", "auto"),
     ul: element("ul", "list-inside list-disc space-y-2 text-sm leading-reading"),
     ol: element("ol", "list-inside list-decimal space-y-2 text-sm leading-reading"),
