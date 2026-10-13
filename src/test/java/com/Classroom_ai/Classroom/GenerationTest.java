@@ -5,6 +5,7 @@ import com.Classroom_ai.Classroom.auth.UserRepository;
 import com.Classroom_ai.Classroom.auth.JwtTokenUtil;
 import com.Classroom_ai.Classroom.course.CourseFileRepository;
 import com.Classroom_ai.Classroom.generation.Exercise;
+import com.Classroom_ai.Classroom.generation.ExerciseOptions;
 import com.Classroom_ai.Classroom.generation.GenerationService;
 import com.Classroom_ai.Classroom.generation.Summary;
 import com.Classroom_ai.Classroom.generation.SummaryLevel;
@@ -72,9 +73,9 @@ class GenerationTest extends GenerationTestSupport {
     @Test
     void fakeAdapter_isDeterministic_andNamesItself() {
         assertEquals(textGeneration.summarize(LESSON, SummaryLevel.MEDIUM), textGeneration.summarize(LESSON, SummaryLevel.MEDIUM));
-        List<Exercise> exercises = textGeneration.generateExercises(LESSON, 5);
+        List<Exercise> exercises = textGeneration.generateExercises(LESSON, ExerciseOptions.DEFAULT);
         assertEquals(5, exercises.size());
-        assertEquals(exercises, textGeneration.generateExercises(LESSON, 5));
+        assertEquals(exercises, textGeneration.generateExercises(LESSON, ExerciseOptions.DEFAULT));
         assertEquals("fake", textGeneration.modelName());
     }
 
@@ -184,11 +185,20 @@ class GenerationTest extends GenerationTestSupport {
     }
 
     @Test
-    void exerciseSet_byStudent_is403() throws Exception {
+    void exerciseSet_byStudent_isPrivateToThatStudent() throws Exception {
         Course c = course();
         String file = c.uploadText(LESSON);
+        String otherStudent = c.enrol("Other");
 
-        c.generate("exercise-sets", file, c.student).andExpect(status().isForbidden());
+        c.generate("exercise-sets", file, c.student).andExpect(status().isAccepted());
+
+        String list = awaitDone("exercise-sets", file, c.student);
+        assertEquals(false, JsonPath.read(list, "$[0].published"));
+        assertEquals(5, ((List<?>) JsonPath.read(list, "$[0].exercises")).size());
+        mvc.perform(get("/api/files/" + file + "/exercise-sets").header("Authorization", c.teacher))
+                .andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/files/" + file + "/exercise-sets").header("Authorization", otherStudent))
+                .andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test
@@ -269,7 +279,7 @@ class GenerationTest extends GenerationTestSupport {
     @Test
     void requests_run_one_at_a_time_and_the_others_wait_pending() throws Exception {
         Course c = course();
-        String file = c.uploadText(LESSON);
+        List<String> fileIds = List.of(c.uploadText(LESSON), c.uploadText(LESSON), c.uploadText(LESSON));
         CountDownLatch firstStarted = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger running = new AtomicInteger();
@@ -285,17 +295,23 @@ class GenerationTest extends GenerationTestSupport {
             }
         }).when(textGeneration).summarize(anyString(), any());
 
-        for (int i = 0; i < 3; i++) {
+        // one request per file: a member may have only one summary at a time running on a file
+        for (String file : fileIds) {
             c.generate("summaries", file, c.teacher).andExpect(status().isAccepted());
         }
         assertTrue(firstStarted.await(10, TimeUnit.SECONDS));
-        mvc.perform(get("/api/files/" + file + "/summaries").header("Authorization", c.teacher))
-                .andExpect(jsonPath("$[?(@.status=='PENDING')]", hasSize(3)));
+        for (String file : fileIds) {
+            mvc.perform(get("/api/files/" + file + "/summaries").header("Authorization", c.teacher))
+                    .andExpect(jsonPath("$[?(@.status=='PENDING')]", hasSize(1)));
+        }
         release.countDown();
 
-        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(50)).untilAsserted(() ->
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(50)).untilAsserted(() -> {
+            for (String file : fileIds) {
                 mvc.perform(get("/api/files/" + file + "/summaries").header("Authorization", c.teacher))
-                        .andExpect(jsonPath("$[?(@.status=='DONE')]", hasSize(3))));
+                        .andExpect(jsonPath("$[?(@.status=='DONE')]", hasSize(1)));
+            }
+        });
         assertEquals(1, mostAtOnce.get());
     }
 }

@@ -25,12 +25,30 @@ public class FakeTextGeneration implements TextGeneration {
     }
 
     @Override
-    public List<Exercise> generateExercises(String text, int count) {
+    public List<Exercise> generateExercises(String text, ExerciseOptions options) {
         String[] sentences = text.replaceAll("\s+", " ").strip().split("(?<=[.!?]) ");
+        List<ExerciseType> plan = options.plan();
         List<Exercise> exercises = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < plan.size(); i++) {
             String sentence = sentences[i % sentences.length];
-            exercises.add(new Exercise("Question " + (i + 1) + ": what does the course say about \"" + sentence + "\"?", sentence));
+            String number = "Question " + (i + 1) + ": ";
+            exercises.add(switch (plan.get(i)) {
+                case OPEN -> new Exercise(number + "what does the course say about \"" + sentence + "\"?", sentence);
+                case MULTIPLE_CHOICE -> {
+                    List<String> choices = new ArrayList<>();
+                    for (int k = 0; k < 4; k++) {
+                        choices.add(k == i % 4 ? sentence : "Demo option " + (k + 1) + ": not what the course says");
+                    }
+                    yield new Exercise(ExerciseType.MULTIPLE_CHOICE, number + "which of these does the course say?",
+                            choices, sentence, "The course says: " + sentence);
+                }
+                case TRUE_FALSE -> {
+                    boolean isTrue = i % 2 == 0;
+                    String statement = isTrue ? sentence : "It is not true that " + sentence;
+                    yield new Exercise(ExerciseType.TRUE_FALSE, number + "true or false: " + statement, List.of(),
+                            String.valueOf(isTrue), "The course says: " + sentence);
+                }
+            });
         }
         return exercises;
     }

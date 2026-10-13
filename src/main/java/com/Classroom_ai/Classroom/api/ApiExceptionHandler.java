@@ -7,6 +7,7 @@ import com.Classroom_ai.Classroom.course.CourseFileNotFoundException;
 import com.Classroom_ai.Classroom.course.CourseNameTakenException;
 import com.Classroom_ai.Classroom.course.CourseNotFoundException;
 import com.Classroom_ai.Classroom.generation.GenerationFailure;
+import com.Classroom_ai.Classroom.generation.GenerationPendingException;
 import com.Classroom_ai.Classroom.material.FileTooLargeException;
 import com.Classroom_ai.Classroom.material.StoredFileMissingException;
 import com.Classroom_ai.Classroom.material.UnsupportedFileTypeException;
@@ -114,6 +115,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(CourseNameTakenException.class)
     public ResponseEntity<ErrorBody> courseNameTaken(CourseNameTakenException e) {
         return respond(HttpStatus.CONFLICT, "COURSE_NAME_TAKEN", e.getMessage());
+    }
+
+    @ExceptionHandler(GenerationPendingException.class)
+    public ResponseEntity<ErrorBody> generationPending(GenerationPendingException e) {
+        return respond(HttpStatus.CONFLICT, "GENERATION_PENDING", e.getMessage());
     }
 
     @ExceptionHandler(AlreadyTeacherException.class)

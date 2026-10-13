@@ -137,11 +137,15 @@ public class GenerationService {
         }
     }
 
-    /** Any member of the file's course may ask for a summary, at the level they choose. */
+    /**
+     * Any member of the file's course may ask for a summary, at the level they choose. A member has one summary at a
+     * time running on a file: asking again before it finishes is a {@link GenerationPendingException}.
+     */
     @Transactional
     public Summary requestSummary(User user, Long fileId, SummaryLevel level) {
         CourseFile file = fileService.get(user, fileId);
         Role role = membership.roleOf(user, file.getCourse());
+        requireNonePending(summaries, file, user);
         Summary summary = new Summary();
         summary.setLevel(level);
         begin(summary, file, user, role);
@@ -150,13 +154,18 @@ public class GenerationService {
         return saved;
     }
 
-    /** Only the Teacher of the file's course may ask for an exercise set. */
+    /**
+     * Any member of the file's course may ask for an exercise set, with the types, difficulty and count they choose.
+     * A Teacher's set is published, a Student's is private. A member has one exercise set at a time running on a file.
+     */
     @Transactional
-    public ExerciseSet requestExerciseSet(User user, Long fileId) {
+    public ExerciseSet requestExerciseSet(User user, Long fileId, ExerciseOptions options) {
         CourseFile file = fileService.get(user, fileId);
-        membership.requireTeacher(user, file.getCourse());
+        Role role = membership.roleOf(user, file.getCourse());
+        requireNonePending(exerciseSets, file, user);
         ExerciseSet set = new ExerciseSet();
-        begin(set, file, user, Role.TEACHER);
+        set.setOptions(options);
+        begin(set, file, user, role);
         ExerciseSet saved = exerciseSets.save(set);
         afterCommit(() -> run(saved.getId(), exerciseSets, this::exercise));
         return saved;
@@ -185,6 +194,12 @@ public class GenerationService {
         }
     }
 
+    private static void requireNonePending(GeneratedRepository<?> repository, CourseFile file, User user) {
+        if (repository.existsByFileIdAndAuthorIdAndStatus(file.getId(), user.getId(), Status.PENDING)) {
+            throw new GenerationPendingException();
+        }
+    }
+
     private static void begin(Generated item, CourseFile file, User user, Role role) {
         item.setFile(file);
         item.setAuthor(user);
@@ -209,7 +224,9 @@ public class GenerationService {
             work.accept(item);
             item.setModel(textGeneration.modelName());
             item.setStatus(Status.DONE);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | Error e) {
+            // An Error too (a reply too deep to parse): a request left PENDING would block its author's next one
+            // for good, see requireNonePending.
             fail(item, e);
         }
         repository.save(item);
@@ -220,7 +237,7 @@ public class GenerationService {
     }
 
     private void exercise(ExerciseSet set) {
-        List<Exercise> exercises = textGeneration.generateExercises(textOf(set.getFile()), EXERCISES_PER_SET);
+        List<Exercise> exercises = textGeneration.generateExercises(textOf(set.getFile()), set.getOptions());
         try {
             set.setExercisesJson(mapper.writeValueAsString(exercises));
         } catch (JsonProcessingException e) {
@@ -232,7 +249,7 @@ public class GenerationService {
         return fileText.textOf(file);
     }
 
-    private void fail(Generated item, RuntimeException e) {
+    private void fail(Generated item, Throwable e) {
         item.setStatus(Status.FAILED);
         item.setModel(textGeneration.modelName());
         if (e instanceof GenerationFailure failure) {

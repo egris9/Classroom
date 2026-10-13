@@ -337,7 +337,7 @@ class LocalTextGenerationTest {
     void exercisesFromAnArabicTextAreAskedForInArabic() {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        adapter().generateExercises(ARABIC, 5);
+        adapter().generateExercises(ARABIC, ExerciseOptions.DEFAULT);
 
         assertThat(system(0)).contains("answer in Arabic");
     }
@@ -475,7 +475,7 @@ class LocalTextGenerationTest {
     void exercises_are_read_from_a_json_array_of_question_and_answer() {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        var exercises = adapter().generateExercises("Photosynthesis turns light into sugar.", 5);
+        var exercises = adapter().generateExercises("Photosynthesis turns light into sugar.", ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(exercises.get(0)).isEqualTo(new Exercise("Q1?", "A1"));
@@ -487,14 +487,14 @@ class LocalTextGenerationTest {
     void a_json_array_inside_a_code_fence_is_accepted() {
         server.replyWith(user -> "Here you go:\n```json\n" + exercisesJson(5) + "\n```");
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
     }
 
     @Test
     void invalid_output_is_retried_once_and_the_retry_can_succeed() {
         server.thenReply("Sorry, I cannot do that.").replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        var exercises = adapter().generateExercises("Some text.", 5);
+        var exercises = adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(server.requests()).hasSize(2);
@@ -505,24 +505,24 @@ class LocalTextGenerationTest {
     void output_that_is_invalid_twice_fails_with_BAD_OUTPUT_after_two_requests() {
         server.replyWith(user -> "not json at all");
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 5))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
         assertThat(server.requests()).hasSize(2);
     }
 
     @Test
     void an_exercise_without_an_answer_is_invalid() {
-        server.replyWith(user -> "[{\"question\":\"Q1?\"},{\"question\":\"Q2?\",\"answer\":\"A2\"}]");
+        server.replyWith(user -> "[{\"question\":\"Q1?\"},{\"question\":\"Q2?\",\"answer\":\"A2\"},{\"question\":\"Q3?\",\"answer\":\"A3\"}]");
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 2))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.of(null, null, 3)))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
     @Test
     void a_blank_question_is_invalid() {
-        server.replyWith(user -> "[{\"question\":\" \",\"answer\":\"A1\"}]");
+        server.replyWith(user -> "[{\"question\":\" \",\"answer\":\"A1\"},{\"question\":\"Q2?\",\"answer\":\"A2\"},{\"question\":\"Q3?\",\"answer\":\"A3\"}]");
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 1))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.of(null, null, 3)))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
@@ -530,7 +530,7 @@ class LocalTextGenerationTest {
     void fewer_exercises_than_asked_for_is_invalid() {
         server.replyWith(user -> exercisesJson(3));
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 5))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
@@ -538,7 +538,7 @@ class LocalTextGenerationTest {
     void more_exercises_than_asked_for_are_cut_to_the_count() {
         server.replyWith(user -> exercisesJson(8));
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
     }
 
     @Test
@@ -546,7 +546,7 @@ class LocalTextGenerationTest {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
         String text = words(400);
 
-        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(text, 5);
+        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(text, ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(server.requests()).hasSize(5);
@@ -567,7 +567,7 @@ class LocalTextGenerationTest {
     void short_text_in_few_chunks_shares_the_count_between_them() {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(words(30), 5);
+        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(words(30), ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(server.requests().size()).isGreaterThan(1).isLessThanOrEqualTo(5);
@@ -601,7 +601,7 @@ class LocalTextGenerationTest {
 
         assertThatThrownBy(() -> limited.summarize(text, SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
-        assertThatThrownBy(() -> limited.generateExercises(text, 5))
+        assertThatThrownBy(() -> limited.generateExercises(text, ExerciseOptions.DEFAULT))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
         assertThat(server.requests()).isEmpty();
     }
@@ -642,7 +642,7 @@ class LocalTextGenerationTest {
     void prose_with_brackets_before_the_array_does_not_hide_it() {
         server.replyWith(user -> "Here are 5 [easy] exercises: " + exercisesJson(5));
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
         assertThat(server.requests()).hasSize(1);
     }
 
@@ -650,7 +650,7 @@ class LocalTextGenerationTest {
     void a_reference_after_the_array_does_not_hide_it() {
         server.replyWith(user -> exercisesJson(5) + "\n\nSee [1] for details.");
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
         assertThat(server.requests()).hasSize(1);
     }
 
@@ -659,6 +659,197 @@ class LocalTextGenerationTest {
         assertThatThrownBy(() -> adapter(" ", Duration.ofSeconds(5), 10_000))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("generation.base-url");
+    }
+
+    // --- exercise types ---
+
+    private static String open(int n) {
+        return "{\"type\":\"open\",\"question\":\"Q" + n + "?\",\"answer\":\"A" + n + "\"}";
+    }
+
+    /** A valid multiple choice item whose answer is the second option. */
+    private static String choice(int n) {
+        return choiceWith(n, "[\"Red " + n + "\",\"Green " + n + "\",\"Blue " + n + "\",\"Black " + n + "\"]",
+                "\"Green " + n + "\"");
+    }
+
+    private static String choiceWith(int n, String options, String answer) {
+        return "{\"type\":\"multiple_choice\",\"question\":\"M" + n + "?\",\"options\":" + options + ",\"answer\":"
+                + answer + ",\"explanation\":\"Because " + n + ".\"}";
+    }
+
+    private static String truth(int n, String answer) {
+        return "{\"type\":\"true_false\",\"question\":\"T" + n + " is so.\",\"answer\":" + answer
+                + ",\"explanation\":\"Because " + n + ".\"}";
+    }
+
+    private static String array(String... items) {
+        return "[" + String.join(",", items) + "]";
+    }
+
+    private static ExerciseOptions only(ExerciseType type, int count) {
+        return ExerciseOptions.of(List.of(type), null, count);
+    }
+
+    private void assertBadOutputAfterTwoAsks(ThrowingCallable call) {
+        assertThatThrownBy(call)
+                .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
+        assertThat(server.requests()).hasSize(2);
+    }
+
+    @Test
+    void theRequestNamesTheCountOfEachTypeAndTheDifficulty() {
+        server.replyWith(user -> array(open(1), choice(2), truth(3, "true"), open(4), choice(5)));
+        ExerciseOptions options = ExerciseOptions.of(
+                List.of(ExerciseType.OPEN, ExerciseType.MULTIPLE_CHOICE, ExerciseType.TRUE_FALSE), Difficulty.HARD, 5);
+
+        var exercises = adapter().generateExercises("Some text.", options);
+
+        assertThat(server.userMessage(0)).contains("exactly 5").contains("2 of type \"open\"")
+                .contains("2 of type \"multiple_choice\"").contains("1 of type \"true_false\"");
+        assertThat(system(0)).contains("analyse, compare or combine ideas").contains("\"options\"")
+                .contains("\"explanation\"");
+        assertThat(exercises).extracting(Exercise::type).containsExactly(ExerciseType.OPEN,
+                ExerciseType.MULTIPLE_CHOICE, ExerciseType.TRUE_FALSE, ExerciseType.OPEN, ExerciseType.MULTIPLE_CHOICE);
+        assertThat(exercises.get(1).options()).containsExactly("Red 2", "Green 2", "Blue 2", "Black 2");
+        assertThat(exercises.get(1).answer()).isEqualTo("Green 2");
+        assertThat(exercises.get(1).explanation()).isEqualTo("Because 2.");
+    }
+
+    @Test
+    void eachDifficultyHasItsOwnWordsInTheSystemMessage() {
+        server.replyWith(LocalTextGenerationTest::asManyAsAsked);
+
+        adapter().generateExercises("Some text.", ExerciseOptions.of(null, Difficulty.EASY, null));
+        adapter().generateExercises("Some text.", ExerciseOptions.of(null, Difficulty.MEDIUM, null));
+
+        assertThat(system(0)).contains("one fact from the text, in at most 20 words");
+        assertThat(system(1)).contains("explain or apply one idea, in at most 40 words");
+    }
+
+    @Test
+    void fifteenExercisesFromOneChunkAreAskedForInThreeCalls() {
+        server.replyWith(LocalTextGenerationTest::asManyAsAsked);
+
+        var exercises = adapter().generateExercises("Some text.", ExerciseOptions.of(null, null, 15));
+
+        assertThat(exercises).hasSize(15);
+        assertThat(server.requests()).hasSize(3);
+        for (int i = 0; i < 3; i++) {
+            assertThat(server.userMessage(i)).contains("exactly 5");
+        }
+    }
+
+    @Test
+    void aLaterCallListsTheQuestionsAlreadyWritten() {
+        server.thenReply(array(open(1), open(2), open(3), open(4), open(5)))
+                .thenReply(array(open(6), open(7), open(8), open(9), open(10)))
+                .thenReply(array(open(11), open(12), open(13), open(14), open(15)));
+
+        adapter().generateExercises("Some text.", ExerciseOptions.of(null, null, 15));
+
+        assertThat(server.userMessage(0)).doesNotContain("Do not repeat");
+        assertThat(server.userMessage(1)).contains("Do not repeat these questions").contains("Q1?").contains("Q5?")
+                .doesNotContain("Q6?");
+        assertThat(server.userMessage(2)).contains("Do not repeat these questions").contains("Q1?").contains("Q10?");
+    }
+
+    @Test
+    void multipleChoiceWithThreeOptionsIsAskedForAgainThenFailsBadOutput() {
+        server.replyWith(user -> array(choiceWith(1, "[\"A1\",\"B1\",\"C1\"]", "\"A1\""), choice(2), choice(3)));
+
+        assertBadOutputAfterTwoAsks(() -> adapter().generateExercises("Some text.", only(ExerciseType.MULTIPLE_CHOICE, 3)));
+        assertThat(server.userMessage(1)).contains("item 1").contains("4 options");
+    }
+
+    @Test
+    void duplicateOptionsAreRefused() {
+        server.replyWith(user -> array(choiceWith(1, "[\"Red\",\" red \",\"Blue\",\"Black\"]", "\"Blue\""), choice(2),
+                choice(3)));
+
+        assertBadOutputAfterTwoAsks(() -> adapter().generateExercises("Some text.", only(ExerciseType.MULTIPLE_CHOICE, 3)));
+    }
+
+    @Test
+    void anAnswerThatIsNotAnOptionIsRefused() {
+        server.replyWith(user -> array(choiceWith(1, "[\"Red\",\"Green\",\"Blue\",\"Black\"]", "\"Purple\""), choice(2),
+                choice(3)));
+
+        assertBadOutputAfterTwoAsks(() -> adapter().generateExercises("Some text.", only(ExerciseType.MULTIPLE_CHOICE, 3)));
+    }
+
+    @Test
+    void anAnswerGivenAsALetterBecomesThatOption() {
+        String options = "[\"Red\",\"Green\",\"Blue\",\"Black\"]";
+        server.replyWith(user -> array(choiceWith(1, options, "\"B\""), choiceWith(2, options, "\"3\""),
+                choiceWith(3, options, "\"(D)\"")));
+
+        var exercises = adapter().generateExercises("Some text.", only(ExerciseType.MULTIPLE_CHOICE, 3));
+
+        assertThat(exercises).extracting(Exercise::answer).containsExactly("Green", "Blue", "Black");
+        assertThat(server.requests()).hasSize(1);
+    }
+
+    @Test
+    void trueFalseAcceptsABooleanAndStoresAString() {
+        server.replyWith(user -> array(truth(1, "true"), truth(2, "\"False\""), truth(3, "\" true \"")));
+
+        var exercises = adapter().generateExercises("Some text.", only(ExerciseType.TRUE_FALSE, 3));
+
+        assertThat(exercises).extracting(Exercise::answer).containsExactly("true", "false", "true");
+        assertThat(exercises).allSatisfy(exercise -> assertThat(exercise.options()).isEmpty());
+    }
+
+    @Test
+    void aTrueFalseAnswerThatIsNeitherIsRefused() {
+        server.replyWith(user -> array(truth(1, "\"maybe\""), truth(2, "true"), truth(3, "false")));
+
+        assertBadOutputAfterTwoAsks(() -> adapter().generateExercises("Some text.", only(ExerciseType.TRUE_FALSE, 3)));
+    }
+
+    @Test
+    void aMixedReplyMissingATypeIsRefused() {
+        server.replyWith(user -> array(open(1), open(2), open(3), open(4)));
+        ExerciseOptions options = ExerciseOptions.of(List.of(ExerciseType.OPEN, ExerciseType.MULTIPLE_CHOICE), null, 4);
+
+        assertBadOutputAfterTwoAsks(() -> adapter().generateExercises("Some text.", options));
+        assertThat(server.userMessage(1)).contains("multiple_choice");
+    }
+
+    @Test
+    void aSecondAskIsLoggedWithWhatWasWrongAndNeverTheText() {
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(LocalTextGeneration.class);
+        ch.qos.logback.classic.Level before = logger.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> logged =
+                new ch.qos.logback.core.read.ListAppender<>();
+        logged.start();
+        logger.addAppender(logged);
+        logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+        try {
+            server.thenReply(array(choiceWith(1, "[\"A\",\"B\",\"C\"]", "\"A\""), choice(2), choice(3)))
+                    .thenReply(array(choice(1), choice(2), choice(3)));
+
+            adapter().generateExercises("The secret sentence about mitochondria.", only(ExerciseType.MULTIPLE_CHOICE, 3));
+        } finally {
+            logger.detachAppender(logged);
+            logger.setLevel(before);
+        }
+
+        assertThat(logged.list).extracting(event -> event.getFormattedMessage())
+                .anySatisfy(message -> assertThat(message).contains("asking once more").contains("item 1"))
+                .noneSatisfy(message -> assertThat(message).contains("mitochondria"));
+    }
+
+    @Test
+    void oldStyleOpenQuestionsWithNoTypeKeyAreStillAccepted() {
+        server.replyWith(user -> array("{\"question\":\"Q1?\",\"answer\":\"A1\"}", "{\"question\":\"Q2?\",\"answer\":\"A2\"}",
+                "{\"question\":\"Q3?\",\"answer\":\"A3\"}", "{\"question\":\"Q4?\",\"answer\":\"A4\"}",
+                "{\"question\":\"Q5?\",\"answer\":\"A5\"}"));
+
+        var exercises = adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT);
+
+        assertThat(exercises).hasSize(5).allSatisfy(exercise -> assertThat(exercise.type()).isEqualTo(ExerciseType.OPEN));
     }
 
     // --- chat ---

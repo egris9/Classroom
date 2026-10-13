@@ -15,12 +15,15 @@ Runs real course PDFs through the local model, so a person can read what it writ
 Each PDF becomes, in `eval/out/` (also git-ignored):
 
 - `<name>.summary.short.txt`, `.summary.medium.txt`, `.summary.long.txt` and `.summary.extra_long.txt`, the summary at each level.
-- `<name>.exercises.json`, 5 exercises (question and answer).
+- `<name>.exercises.json`, 5 open exercises (question and answer).
+- `<name>.exercises.hard.json`, a hard set of 15 exercises of all three types (open, multiple choice, true/false), with its own row and milliseconds in `results.md`.
 - one `results.md` with the text length, and for each summary level and for the exercises the status (`DONE` or a failure code) and the milliseconds it took; each summary also has its word count.
 
 A failure is recorded and the run goes on with the next PDF.
 
 Each call for a summary also prints a line with its level, the tokens the model wrote and the milliseconds (`Summary call (whole, level LONG): 612 completion tokens in 14200 ms`). The token caps and the long time limit of the app are set from these lines.
+
+A model reply for exercises that is not valid is asked for once more; each time that happens the run prints a line saying what was wrong (`The exercises (...) were not valid, item 1 needs 4 options ..., asking once more`). Count those lines to see how often the second ask was needed.
 
 Optional variables: `GENERATION_TIMEOUT_SECONDS` (per request, default 300), `GENERATION_LONG_TIMEOUT_SECONDS` (per request of a long or extra long summary, default 600), `GENERATION_SUMMARY_MAX_TOKENS` (the token caps in level order, default `400,900,1550,2450`; set them high, for example `4000,4000,4000,4000`, to measure what the model writes when nothing cuts it) and `GENERATION_CHUNK_CHARS` (default 10000).
 
