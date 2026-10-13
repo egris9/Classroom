@@ -1,4 +1,4 @@
-import { ExerciseList } from "@/components/ExerciseList";
+import { ExerciseSetCard } from "@/components/exercises/ExerciseSetCard";
 import { ToolsForm } from "@/components/ToolsForm";
 import { exercisesFromPdf, exercisesFromText } from "../api/tools.js";
 
@@ -13,7 +13,7 @@ export function ToolsExercises({ attempt, limits }) {
             attempt={attempt}
             limits={limits}
         >
-            {(set) => <ExerciseList set={set} />}
+            {(set) => <ExerciseSetCard set={set} collapsible={false} />}
         </ToolsForm>
     );
 }

@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExerciseList } from "@/components/ExerciseList";
 import { ExerciseOptionsForm } from "@/components/exercises/ExerciseOptionsForm";
+import { ExerciseSetCard } from "@/components/exercises/ExerciseSetCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SummaryCard } from "@/components/SummaryCard";
 import { getPref, setPref } from "@/lib/prefs";
@@ -50,6 +50,7 @@ export function FileResults({ file, role }) {
     });
     // The summaries that were here when the page loaded. One that comes later is new, and only a new one fades in.
     const [loadedIds, setLoadedIds] = useState(null);
+    const [loadedSetIds, setLoadedSetIds] = useState(null);
     const isTeacher = role === "TEACHER";
 
     const refresh = useCallback(async () => {
@@ -58,6 +59,7 @@ export function FileResults({ file, role }) {
             setSummaries(loadedSummaries);
             setLoadedIds((known) => known ?? new Set(loadedSummaries.map((summary) => summary.id)));
             setExerciseSets(loadedSets);
+            setLoadedSetIds((known) => known ?? new Set(loadedSets.map((set) => set.id)));
             setError(null);
         } catch (err) {
             setError(err.message);
@@ -172,7 +174,8 @@ export function FileResults({ file, role }) {
                 ))}
             </TabsContent>
 
-            <TabsContent value="exercises" className="mt-4 space-y-4">
+            {/* Kept mounted too, so a set being played is not lost when the Summary tab is visited. */}
+            <TabsContent value="exercises" forceMount className="mt-4 space-y-4 data-[state=inactive]:hidden">
                 <Button
                     variant="outline"
                     className="h-11"
@@ -199,8 +202,15 @@ export function FileResults({ file, role }) {
                             : "No exercises yet. Choose Generate exercises to make a set only you can see."}
                     </Empty>
                 )}
-                {exerciseSets.map((set) => (
-                    <ExerciseList key={set.id} set={set} badge={<ResultBadge item={set} />} />
+                {exerciseSets.map((set, index) => (
+                    <ExerciseSetCard
+                        key={set.id}
+                        set={set}
+                        badge={<ResultBadge item={set} />}
+                        collapsible
+                        defaultOpen={index === 0}
+                        className={loadedSetIds?.has(set.id) ? undefined : APPEAR}
+                    />
                 ))}
             </TabsContent>
         </Tabs>
