@@ -215,6 +215,39 @@
     from { opacity: 0; transform: translateY(4px); }
   }
 
+  /*
+   * The exercise player (components/exercises). A new step fades in and slides 16px from the side it comes from;
+   * the mark on an option scales in; the answer card fades in and rises 8px. Each runs once.
+   */
+  .step-in-next {
+    animation: step-in-next 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .step-in-back {
+    animation: step-in-back 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .mark-in {
+    animation: mark-in 150ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .answer-reveal {
+    animation: answer-reveal 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @keyframes step-in-next {
+    from { opacity: 0; transform: translateX(16px); }
+  }
+
+  @keyframes step-in-back {
+    from { opacity: 0; transform: translateX(-16px); }
+  }
+
+  @keyframes mark-in {
+    from { opacity: 0; transform: scale(0.5); }
+  }
+
+  @keyframes answer-reveal {
+    from { opacity: 0; transform: translateY(8px); }
+  }
+
   /* Reduced motion: a still, half-strength bar that fills the track. */
   @media (prefers-reduced-motion: reduce) {
     .progress-indeterminate {
