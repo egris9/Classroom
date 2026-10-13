@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -232,6 +233,19 @@ class ExerciseSetOptionsTest extends GenerationTestSupport {
         c.generate("exercise-sets", file, c.teacher).andExpect(status().isAccepted());
         awaitStatus("exercise-sets", file, c.teacher, "FAILED");
 
+        c.generate("exercise-sets", file, c.teacher).andExpect(status().isAccepted());
+    }
+
+    @Test
+    void aModelFailureThatIsNotAnExceptionFailsTheSetAndDoesNotBlockTheNextRequest() throws Exception {
+        Course c = course();
+        String file = c.uploadText(LESSON);
+        doThrow(new StackOverflowError("deep reply")).when(textGeneration).generateExercises(anyString(), any());
+        c.generate("exercise-sets", file, c.teacher).andExpect(status().isAccepted());
+
+        String list = awaitStatus("exercise-sets", file, c.teacher, "FAILED");
+
+        assertEquals("GENERATION_FAILED", JsonPath.read(list, "$[0].failureCode"));
         c.generate("exercise-sets", file, c.teacher).andExpect(status().isAccepted());
     }
 

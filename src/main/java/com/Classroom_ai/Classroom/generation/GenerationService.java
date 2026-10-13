@@ -224,7 +224,9 @@ public class GenerationService {
             work.accept(item);
             item.setModel(textGeneration.modelName());
             item.setStatus(Status.DONE);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | Error e) {
+            // An Error too (a reply too deep to parse): a request left PENDING would block its author's next one
+            // for good, see requireNonePending.
             fail(item, e);
         }
         repository.save(item);
@@ -247,7 +249,7 @@ public class GenerationService {
         return fileText.textOf(file);
     }
 
-    private void fail(Generated item, RuntimeException e) {
+    private void fail(Generated item, Throwable e) {
         item.setStatus(Status.FAILED);
         item.setModel(textGeneration.modelName());
         if (e instanceof GenerationFailure failure) {
