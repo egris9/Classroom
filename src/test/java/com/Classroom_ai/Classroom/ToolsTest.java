@@ -49,10 +49,12 @@ class ToolsTest extends ToolsTestSupport {
     /** The fake model, counting how often it is asked, so a refusal can be shown to have cost no model call. */
     static class CountingTextGeneration extends FakeTextGeneration {
         final AtomicInteger calls = new AtomicInteger();
+        volatile SummaryLevel lastLevel;
 
         @Override
         public String summarize(String text, SummaryLevel level) {
             calls.incrementAndGet();
+            lastLevel = level;
             return super.summarize(text, level);
         }
 
@@ -140,6 +142,14 @@ class ToolsTest extends ToolsTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").value(containsString("Photosynthesis turns light")))
                 .andExpect(jsonPath("$.model").value("fake"));
+    }
+
+    /** The tools page has no level picker, and a request there waits for its answer: it is always a medium summary. */
+    @Test
+    void aToolsSummaryIsAskedForAtTheMediumLevel() throws Exception {
+        summarise(newIp(), LESSON).andExpect(status().isOk());
+
+        assertThat(model.lastLevel).isEqualTo(SummaryLevel.MEDIUM);
     }
 
     @Test
