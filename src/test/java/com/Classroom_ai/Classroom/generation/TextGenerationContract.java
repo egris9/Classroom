@@ -91,10 +91,11 @@ abstract class TextGenerationContract {
 
     @Test
     void exercises_come_in_the_number_asked_for_with_a_question_and_an_answer_each() {
-        List<Exercise> exercises = adapter().generateExercises(lesson(1200), 5);
+        List<Exercise> exercises = adapter().generateExercises(lesson(1200), ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(exercises).allSatisfy(exercise -> {
+            assertThat(exercise.type()).isEqualTo(ExerciseType.OPEN);
             assertThat(exercise.question()).isNotBlank();
             assertThat(exercise.answer()).isNotBlank();
         });
@@ -102,14 +103,60 @@ abstract class TextGenerationContract {
 
     @Test
     void exercises_from_a_text_longer_than_one_chunk_come_in_the_number_asked_for() {
-        List<Exercise> exercises = adapter().generateExercises(lesson(25_000), 5);
+        List<Exercise> exercises = adapter().generateExercises(lesson(25_000), ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
     }
 
     @Test
-    void a_smaller_count_gives_a_smaller_set() {
-        assertThat(adapter().generateExercises(lesson(1200), 2)).hasSize(2);
+    void countIsHonouredAtThreeAndFifteen() {
+        assertThat(adapter().generateExercises(lesson(1200), ExerciseOptions.of(null, null, 3))).hasSize(3);
+        assertThat(adapter().generateExercises(lesson(1200), ExerciseOptions.of(null, null, 15))).hasSize(15);
+    }
+
+    @Test
+    void multipleChoiceHasFourDistinctOptionsAndAnAnswerAmongThem() {
+        ExerciseOptions options = ExerciseOptions.of(List.of(ExerciseType.MULTIPLE_CHOICE), null, 5);
+
+        List<Exercise> exercises = adapter().generateExercises(lesson(1200), options);
+
+        assertThat(exercises).hasSize(5);
+        assertThat(exercises).allSatisfy(exercise -> {
+            assertThat(exercise.type()).isEqualTo(ExerciseType.MULTIPLE_CHOICE);
+            assertThat(exercise.question()).isNotBlank();
+            assertThat(exercise.options()).hasSize(4).doesNotHaveDuplicates().noneMatch(String::isBlank);
+            assertThat(exercise.options()).contains(exercise.answer());
+        });
+    }
+
+    @Test
+    void trueFalseAnswersAreTrueOrFalse() {
+        ExerciseOptions options = ExerciseOptions.of(List.of(ExerciseType.TRUE_FALSE), null, 5);
+
+        List<Exercise> exercises = adapter().generateExercises(lesson(1200), options);
+
+        assertThat(exercises).hasSize(5);
+        assertThat(exercises).allSatisfy(exercise -> {
+            assertThat(exercise.type()).isEqualTo(ExerciseType.TRUE_FALSE);
+            assertThat(exercise.question()).isNotBlank();
+            assertThat(exercise.options()).isEmpty();
+            assertThat(exercise.answer()).isIn("true", "false");
+        });
+    }
+
+    @Test
+    void aMixedSetHasTheCountOfEachTypeThePlanAsksFor() {
+        ExerciseOptions options = ExerciseOptions.of(
+                List.of(ExerciseType.OPEN, ExerciseType.MULTIPLE_CHOICE, ExerciseType.TRUE_FALSE), null, 7);
+
+        List<Exercise> exercises = adapter().generateExercises(lesson(1200), options);
+
+        assertThat(exercises).hasSize(7);
+        for (ExerciseType type : ExerciseType.values()) {
+            assertThat(exercises.stream().filter(exercise -> exercise.type() == type).count())
+                    .as("exercises of type %s", type)
+                    .isEqualTo(options.plan().stream().filter(planned -> planned == type).count());
+        }
     }
 
     @Test

@@ -8,7 +8,8 @@ public interface TextGeneration {
 
     String summarize(String text, SummaryLevel level);
 
-    List<Exercise> generateExercises(String text, int count);
+    /** Exercises whose types match {@code options.plan()} as counts per type, as many as {@code options.count()}. */
+    List<Exercise> generateExercises(String text, ExerciseOptions options);
 
     /**
      * Answers the last message of {@code history} as the study assistant. {@code onDelta} gets each piece of the

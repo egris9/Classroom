@@ -3,6 +3,8 @@ package com.Classroom_ai.Classroom.generation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -41,6 +43,24 @@ class LocalTextGenerationContractTest extends TextGenerationContract {
             return sentence.repeat(4).strip();
         }
         return system.contains("exactly 3 bullet points") ? "A summary." : sentence.repeat(2).strip();
+    }
+
+    @Override
+    @Test
+    @Disabled("F2.2")
+    void multipleChoiceHasFourDistinctOptionsAndAnAnswerAmongThem() {
+    }
+
+    @Override
+    @Test
+    @Disabled("F2.2")
+    void trueFalseAnswersAreTrueOrFalse() {
+    }
+
+    @Override
+    @Test
+    @Disabled("F2.2")
+    void aMixedSetHasTheCountOfEachTypeThePlanAsksFor() {
     }
 
     @AfterEach

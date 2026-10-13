@@ -220,7 +220,7 @@ public class GenerationService {
     }
 
     private void exercise(ExerciseSet set) {
-        List<Exercise> exercises = textGeneration.generateExercises(textOf(set.getFile()), EXERCISES_PER_SET);
+        List<Exercise> exercises = textGeneration.generateExercises(textOf(set.getFile()), ExerciseOptions.DEFAULT);
         try {
             set.setExercisesJson(mapper.writeValueAsString(exercises));
         } catch (JsonProcessingException e) {

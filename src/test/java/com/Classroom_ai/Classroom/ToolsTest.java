@@ -1,6 +1,7 @@
 package com.Classroom_ai.Classroom;
 
 import com.Classroom_ai.Classroom.generation.Exercise;
+import com.Classroom_ai.Classroom.generation.ExerciseOptions;
 import com.Classroom_ai.Classroom.generation.FakeTextGeneration;
 import com.Classroom_ai.Classroom.generation.Ocr;
 import com.Classroom_ai.Classroom.generation.PdfText;
@@ -59,9 +60,9 @@ class ToolsTest extends ToolsTestSupport {
         }
 
         @Override
-        public List<Exercise> generateExercises(String text, int count) {
+        public List<Exercise> generateExercises(String text, ExerciseOptions options) {
             calls.incrementAndGet();
-            return super.generateExercises(text, count);
+            return super.generateExercises(text, options);
         }
     }
 

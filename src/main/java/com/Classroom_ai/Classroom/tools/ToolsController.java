@@ -6,6 +6,7 @@ import com.Classroom_ai.Classroom.api.ToolsSummaryResponse;
 import com.Classroom_ai.Classroom.api.ToolsTextRequest;
 import com.Classroom_ai.Classroom.auth.User;
 import com.Classroom_ai.Classroom.auth.UserService;
+import com.Classroom_ai.Classroom.generation.ExerciseOptions;
 import com.Classroom_ai.Classroom.generation.GenerationService;
 import com.Classroom_ai.Classroom.generation.PdfText;
 import com.Classroom_ai.Classroom.generation.SummaryLevel;
@@ -107,8 +108,8 @@ public class ToolsController {
 
     private ToolsExerciseSetResponse exercises(Input input, HttpServletRequest request, HttpServletResponse response) {
         return run(input, request, response, text -> new ToolsExerciseSetResponse(
-                textGeneration.generateExercises(text, GenerationService.EXERCISES_PER_SET).stream()
-                        .map(exercise -> new ExerciseResponse(exercise.question(), exercise.answer())).toList(),
+                textGeneration.generateExercises(text, ExerciseOptions.DEFAULT).stream()
+                        .map(ExerciseResponse::of).toList(),
                 textGeneration.modelName()));
     }
 

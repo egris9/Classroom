@@ -60,7 +60,7 @@ public class GenerationController {
 
     private ExerciseSetResponse respond(ExerciseSet e) {
         List<ExerciseResponse> exercises = generation.exercisesOf(e).stream()
-                .map(x -> new ExerciseResponse(x.question(), x.answer())).toList();
+                .map(ExerciseResponse::of).toList();
         return new ExerciseSetResponse(e.getId(), e.getStatus().name(), exercises, e.isPublished(),
                 e.getAuthor().getId(), e.getModel(), e.getFailureCode(), e.getFailureMessage(), e.getCreatedAt());
     }

@@ -281,7 +281,8 @@ public class LocalTextGeneration implements TextGeneration {
      * document is asked about throughout and not only at the beginning.
      */
     @Override
-    public List<Exercise> generateExercises(String text, int count) {
+    public List<Exercise> generateExercises(String text, ExerciseOptions options) {
+        int count = options.count();
         List<String> chunks = chunksOf(text);
         String language = languageOf(text);
         int[] perChunk = new int[chunks.size()];

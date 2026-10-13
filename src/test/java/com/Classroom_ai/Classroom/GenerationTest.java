@@ -5,6 +5,7 @@ import com.Classroom_ai.Classroom.auth.UserRepository;
 import com.Classroom_ai.Classroom.auth.JwtTokenUtil;
 import com.Classroom_ai.Classroom.course.CourseFileRepository;
 import com.Classroom_ai.Classroom.generation.Exercise;
+import com.Classroom_ai.Classroom.generation.ExerciseOptions;
 import com.Classroom_ai.Classroom.generation.GenerationService;
 import com.Classroom_ai.Classroom.generation.Summary;
 import com.Classroom_ai.Classroom.generation.SummaryLevel;
@@ -72,9 +73,9 @@ class GenerationTest extends GenerationTestSupport {
     @Test
     void fakeAdapter_isDeterministic_andNamesItself() {
         assertEquals(textGeneration.summarize(LESSON, SummaryLevel.MEDIUM), textGeneration.summarize(LESSON, SummaryLevel.MEDIUM));
-        List<Exercise> exercises = textGeneration.generateExercises(LESSON, 5);
+        List<Exercise> exercises = textGeneration.generateExercises(LESSON, ExerciseOptions.DEFAULT);
         assertEquals(5, exercises.size());
-        assertEquals(exercises, textGeneration.generateExercises(LESSON, 5));
+        assertEquals(exercises, textGeneration.generateExercises(LESSON, ExerciseOptions.DEFAULT));
         assertEquals("fake", textGeneration.modelName());
     }
 

@@ -82,7 +82,7 @@ final class EvalRunner {
         }
         Timed exercises = timed(() -> {
             try {
-                return mapper.writeValueAsString(generation.generateExercises(text, exercisesPerSet));
+                return mapper.writeValueAsString(generation.generateExercises(text, ExerciseOptions.of(null, null, exercisesPerSet)));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

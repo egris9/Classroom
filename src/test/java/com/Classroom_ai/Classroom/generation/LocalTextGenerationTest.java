@@ -337,7 +337,7 @@ class LocalTextGenerationTest {
     void exercisesFromAnArabicTextAreAskedForInArabic() {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        adapter().generateExercises(ARABIC, 5);
+        adapter().generateExercises(ARABIC, ExerciseOptions.DEFAULT);
 
         assertThat(system(0)).contains("answer in Arabic");
     }
@@ -475,7 +475,7 @@ class LocalTextGenerationTest {
     void exercises_are_read_from_a_json_array_of_question_and_answer() {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        var exercises = adapter().generateExercises("Photosynthesis turns light into sugar.", 5);
+        var exercises = adapter().generateExercises("Photosynthesis turns light into sugar.", ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(exercises.get(0)).isEqualTo(new Exercise("Q1?", "A1"));
@@ -487,14 +487,14 @@ class LocalTextGenerationTest {
     void a_json_array_inside_a_code_fence_is_accepted() {
         server.replyWith(user -> "Here you go:\n```json\n" + exercisesJson(5) + "\n```");
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
     }
 
     @Test
     void invalid_output_is_retried_once_and_the_retry_can_succeed() {
         server.thenReply("Sorry, I cannot do that.").replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        var exercises = adapter().generateExercises("Some text.", 5);
+        var exercises = adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(server.requests()).hasSize(2);
@@ -505,24 +505,24 @@ class LocalTextGenerationTest {
     void output_that_is_invalid_twice_fails_with_BAD_OUTPUT_after_two_requests() {
         server.replyWith(user -> "not json at all");
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 5))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
         assertThat(server.requests()).hasSize(2);
     }
 
     @Test
     void an_exercise_without_an_answer_is_invalid() {
-        server.replyWith(user -> "[{\"question\":\"Q1?\"},{\"question\":\"Q2?\",\"answer\":\"A2\"}]");
+        server.replyWith(user -> "[{\"question\":\"Q1?\"},{\"question\":\"Q2?\",\"answer\":\"A2\"},{\"question\":\"Q3?\",\"answer\":\"A3\"}]");
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 2))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.of(null, null, 3)))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
     @Test
     void a_blank_question_is_invalid() {
-        server.replyWith(user -> "[{\"question\":\" \",\"answer\":\"A1\"}]");
+        server.replyWith(user -> "[{\"question\":\" \",\"answer\":\"A1\"},{\"question\":\"Q2?\",\"answer\":\"A2\"},{\"question\":\"Q3?\",\"answer\":\"A3\"}]");
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 1))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.of(null, null, 3)))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
@@ -530,7 +530,7 @@ class LocalTextGenerationTest {
     void fewer_exercises_than_asked_for_is_invalid() {
         server.replyWith(user -> exercisesJson(3));
 
-        assertThatThrownBy(() -> adapter().generateExercises("Some text.", 5))
+        assertThatThrownBy(() -> adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("BAD_OUTPUT"));
     }
 
@@ -538,7 +538,7 @@ class LocalTextGenerationTest {
     void more_exercises_than_asked_for_are_cut_to_the_count() {
         server.replyWith(user -> exercisesJson(8));
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
     }
 
     @Test
@@ -546,7 +546,7 @@ class LocalTextGenerationTest {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
         String text = words(400);
 
-        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(text, 5);
+        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(text, ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(server.requests()).hasSize(5);
@@ -567,7 +567,7 @@ class LocalTextGenerationTest {
     void short_text_in_few_chunks_shares_the_count_between_them() {
         server.replyWith(LocalTextGenerationTest::asManyAsAsked);
 
-        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(words(30), 5);
+        var exercises = adapter(server.baseUrl(), Duration.ofSeconds(5), 150).generateExercises(words(30), ExerciseOptions.DEFAULT);
 
         assertThat(exercises).hasSize(5);
         assertThat(server.requests().size()).isGreaterThan(1).isLessThanOrEqualTo(5);
@@ -601,7 +601,7 @@ class LocalTextGenerationTest {
 
         assertThatThrownBy(() -> limited.summarize(text, SummaryLevel.MEDIUM))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
-        assertThatThrownBy(() -> limited.generateExercises(text, 5))
+        assertThatThrownBy(() -> limited.generateExercises(text, ExerciseOptions.DEFAULT))
                 .isInstanceOfSatisfying(GenerationFailure.class, f -> assertThat(f.code()).isEqualTo("TOO_LONG"));
         assertThat(server.requests()).isEmpty();
     }
@@ -642,7 +642,7 @@ class LocalTextGenerationTest {
     void prose_with_brackets_before_the_array_does_not_hide_it() {
         server.replyWith(user -> "Here are 5 [easy] exercises: " + exercisesJson(5));
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
         assertThat(server.requests()).hasSize(1);
     }
 
@@ -650,7 +650,7 @@ class LocalTextGenerationTest {
     void a_reference_after_the_array_does_not_hide_it() {
         server.replyWith(user -> exercisesJson(5) + "\n\nSee [1] for details.");
 
-        assertThat(adapter().generateExercises("Some text.", 5)).hasSize(5);
+        assertThat(adapter().generateExercises("Some text.", ExerciseOptions.DEFAULT)).hasSize(5);
         assertThat(server.requests()).hasSize(1);
     }
 
